@@ -1,26 +1,33 @@
 import { NextResponse, NextRequest } from "next/server";
-import { createClient } from "@supabase/supabase-js";
+import { createServerClient } from "@supabase/ssr";
 
 export async function middleware(req: NextRequest) {
   const res = NextResponse.next();
 
-  const supabase = createClient(
+  const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     {
-      global: {
-        headers: { Authorization: req.headers.get("Authorization")! },
+      cookies: {
+        getAll() {
+          return req.cookies.getAll();
+        },
+        setAll(cookiesToSet) {
+          cookiesToSet.forEach(({ name, value, options }) => {
+            res.cookies.set(name, value, options);
+          });
+        },
       },
     }
   );
 
-  // obtener la sesión del request
+  // Refrescar la sesión si es necesario
   const {
     data: { user },
   } = await supabase.auth.getUser();
 
   // PROTEGER RUTAS
-  if (req.nextUrl.pathname.startsWith("/dashboard")) {
+  if (req.nextUrl.pathname.startsWith("/dashboard") || req.nextUrl.pathname.startsWith("/properties")) {
     if (!user) {
       return NextResponse.redirect(new URL("/auth/login", req.url));
     }

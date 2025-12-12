@@ -1,37 +1,55 @@
 "use client";
 
-import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { supabaseBrowser } from "@/lib/supabase";
+import LogoutButton from "@/components/auth/LogoutButton";
+import { Home, Building } from "lucide-react";
 
-export default function Sidebar() {
-  const router = useRouter();
+const menu = [
+  { name: "Dashboard", key: "dashboard", icon: Home },
+  { name: "Properties", key: "properties", icon: Building },
+];
 
-  const handleLogout = async () => {
-    await supabaseBrowser.auth.signOut();
-    router.push("/auth/login");
-  };
+interface SidebarProps {
+  activeView: string;
+  onViewChange: (view: string) => void;
+}
+
+export default function Sidebar({ activeView, onViewChange }: SidebarProps) {
+  // Marcar Properties como activo si estamos en properties, new, details o edit
+  const isPropertiesActive = activeView === "properties" || 
+                            activeView === "new" || 
+                            activeView === "details" || 
+                            activeView === "edit";
+  
+  // No mostrar el sidebar en la vista de perfil desde aquí, se maneja desde el header
 
   return (
-    <aside className="w-64 bg-white shadow-lg p-6 flex flex-col">
-      <h2 className="text-xl font-bold mb-8">Regrow CRM</h2>
-
-      <nav className="flex-1 space-y-4">
-        <Link href="/dashboard" className="block hover:text-blue-600">
-          Dashboard
-        </Link>
-
-        <Link href="/dashboard/properties" className="block hover:text-blue-600">
-          Properties
-        </Link>
+    <aside className="w-64 bg-white border-r border-gray-200 flex flex-col">
+      {/* NAVIGATION */}
+      <nav className="flex-1 p-4 space-y-1">
+        {menu.map((item) => {
+          const Icon = item.icon;
+          const active = item.key === "properties" 
+            ? isPropertiesActive 
+            : activeView === item.key;
+          return (
+            <button
+              onClick={() => onViewChange(item.key)}
+              key={item.name}
+              className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg transition 
+                ${active ? "bg-[#0048BC] text-white shadow-sm" : "text-gray-700 hover:bg-gray-100"}
+              `}
+            >
+              <Icon size={18} />
+              {item.name}
+            </button>
+          );
+        })}
       </nav>
 
-      <button
-        onClick={handleLogout}
-        className="mt-8 bg-red-500 text-white py-2 px-4 rounded hover:bg-red-600"
-      >
-        Logout
-      </button>
+      {/* LOGOUT */}
+      <div className="p-4 border-t border-gray-200">
+        <LogoutButton />
+      </div>
     </aside>
   );
 }

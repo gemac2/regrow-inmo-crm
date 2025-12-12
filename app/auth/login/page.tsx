@@ -17,22 +17,35 @@ export default function LoginPage() {
     setLoading(true);
     setErrorMsg("");
 
-    const formData = new FormData(e.currentTarget);
-    const email = formData.get("email") as string;
-    const password = formData.get("password") as string;
+    try {
+      const formData = new FormData(e.currentTarget);
+      const email = formData.get("email") as string;
+      const password = formData.get("password") as string;
 
-    const { data, error } = await supabaseBrowser.auth.signInWithPassword({
-      email,
-      password,
-    });
+      const { data, error } = await supabaseBrowser.auth.signInWithPassword({
+        email,
+        password,
+      });
 
-    if (error) {
-      setErrorMsg(error.message);
+      if (error) {
+        setErrorMsg(error.message);
+        setLoading(false);
+        return;
+      }
+
+      // Esperar un momento para que las cookies se establezcan
+      if (data.session) {
+        // Usar window.location.href para forzar una recarga completa
+        // Esto asegura que las cookies se envíen correctamente al servidor
+        window.location.href = "/dashboard";
+      } else {
+        setErrorMsg("Error al iniciar sesión. Por favor intenta de nuevo.");
+        setLoading(false);
+      }
+    } catch (err) {
+      setErrorMsg("Error inesperado. Por favor intenta de nuevo.");
       setLoading(false);
-      return;
     }
-
-    router.push("/dashboard");
   };
 
   return (
