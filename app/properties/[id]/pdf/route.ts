@@ -1,11 +1,10 @@
 import { NextResponse } from "next/server";
 import puppeteer from "puppeteer";
 import { getProperty } from "../../actions";
-import { supabaseBrowser } from "@/lib/supabase";
 
 export async function GET(req: Request, { params }: any) {
-  const { id } = await params; //
-    const property = await getProperty(id);
+  const { id } = params;
+  const property = await getProperty(id);
 
   if (!property) {
     return NextResponse.json({ error: "Property not found" }, { status: 404 });
@@ -18,158 +17,111 @@ export async function GET(req: Request, { params }: any) {
 
   const page = await browser.newPage();
 
+  // Si no hay imagen principal
+  const mainImage = property.images?.[0] || "";
+
+  const featuresHTML = (property.main_features || [])
+    .map((f: string) => `<span class="tag">${f}</span>`)
+    .join("");
+
   const html = `
   <html>
-<head>
-  <style>
-    body {
-      margin: 0;
-      padding: 0;
-      font-family: 'Arial', sans-serif;
-    }
+  <head>
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        padding: 30px;
+        margin: 0;
+        font-size: 14px;
+        line-height: 1.5;
+      }
 
-    /* PORTADA COMPLETA */
-    .cover {
-      height: 100vh;
-      width: 100%;
-      background: linear-gradient(135deg, #0048BC, #00F5A5);
-      color: white;
-      text-align: center;
-      padding-top: 60px;
-      box-sizing: border-box;
-    }
+      h1 {
+        font-size: 28px;
+        margin-bottom: 4px;
+      }
 
-    .cover-logo {
-      width: 200px;
-      margin: 0 auto 30px;
-    }
+      .price {
+        font-size: 22px;
+        margin-bottom: 20px;
+        color: #444;
+      }
 
-    .cover-title {
-      font-size: 42px;
-      font-weight: bold;
-      margin-bottom: 10px;
-    }
+      .hero {
+        width: 100%;
+        height: 260px;
+        object-fit: cover;
+        border-radius: 8px;
+        margin-bottom: 20px;
+      }
 
-    .cover-price {
-      font-size: 32px;
-      margin-bottom: 40px;
-    }
+      h2 {
+        font-size: 20px;
+        margin-top: 28px;
+        border-bottom: 2px solid #ccc;
+        padding-bottom: 4px;
+      }
 
-    .hero {
-      width: 80%;
-      height: 350px;
-      object-fit: cover;
-      border-radius: 12px;
-      margin: 0 auto;
-      display: block;
-      border: 4px solid rgba(255,255,255,0.6);
-    }
+      .info-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 10px;
+      }
 
-    .page {
-      padding: 40px;
-      box-sizing: border-box;
-    }
+      .label {
+        font-weight: bold;
+      }
 
-    .section-title {
-      font-size: 24px;
-      font-weight: bold;
-      margin: 25px 0 15px;
-      color: #0048BC;
-      border-left: 6px solid #00F5A5;
-      padding-left: 12px;
-    }
+      .tag {
+        display: inline-block;
+        padding: 6px 12px;
+        background: #f1f1f1;
+        margin: 4px 4px 0 0;
+        border-radius: 6px;
+      }
 
-    .grid {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 12px;
-    }
+      footer {
+        margin-top: 40px;
+        text-align: center;
+        font-size: 12px;
+        color: #777;
+      }
+    </style>
+  </head>
 
-    .label {
-      font-weight: bold;
-      color: #0048BC;
-    }
+  <body>
 
-    .tag {
-      display: inline-block;
-      background: #e0f7f5;
-      padding: 8px 14px;
-      border-radius: 20px;
-      color: #0048BC;
-      font-size: 14px;
-      margin: 6px;
-      border: 1px solid #00F5A5;
-    }
+    <h1>${property.title}</h1>
+    <div class="price">${property.price.toLocaleString()} €</div>
 
-    .footer {
-      margin-top: 60px;
-      text-align: center;
-      font-size: 12px;
-      color: #777;
-    }
+    <img src="${mainImage}" class="hero" />
 
-    .agent-box {
-      background: #f6faff;
-      padding: 18px;
-      border-radius: 10px;
-      border: 1px solid #d1e5ff;
-      width: 60%;
-    }
-  </style>
-</head>
-
-<body>
-
-  <!-- PORTADA -->
-  <div class="cover">
-    <!-- LOGO -->
-    <img src="{{LOGO_BASE64}}" class="cover-logo" />
-
-    <div class="cover-title">{{TITLE}}</div>
-    <div class="cover-price">{{PRICE}} €</div>
-
-    <img src="{{IMAGE}}" class="hero" />
-  </div>
-
-  <!-- PÁGINA 2 -->
-  <div class="page">
-
-    <!-- GENERAL INFO -->
-    <div class="section-title">Property Information</div>
-    <div class="grid">
-      <div><span class="label">Reference:</span> {{REFERENCE}}</div>
-      <div><span class="label">City:</span> {{CITY}}</div>
+    <h2>General Information</h2>
+    <div class="info-grid">
+      <div><span class="label">Reference:</span> ${property.reference}</div>
+      <div><span class="label">City:</span> ${property.city}</div>
       <div><span class="label">Country:</span> Spain</div>
-      <div><span class="label">Category:</span> {{CATEGORY}}</div>
-      <div><span class="label">Type:</span> {{TYPE}}</div>
+      <div><span class="label">Category:</span> ${property.category || ""}</div>
+      <div><span class="label">Type:</span> ${property.property_type || ""}</div>
     </div>
 
-    <!-- FEATURES -->
-    <div class="section-title">Main Features</div>
-    <div>{{FEATURES}}</div>
+    <h2>Main Features</h2>
+    <div>${featuresHTML}</div>
 
-    <!-- DESCRIPTION -->
-    <div class="section-title">Description</div>
-    <p>{{DESCRIPTION}}</p>
+    <h2>Description</h2>
+    <p>${property.description || ""}</p>
 
-    <!-- AGENT -->
-    <div class="section-title">Agent</div>
-    <div class="agent-box">
-      <p><strong>{{AGENT_NAME}}</strong></p>
-      <p>{{AGENT_PHONE}}</p>
-      <p>{{AGENT_EMAIL}}</p>
-    </div>
+    <h2>Agent</h2>
+    <p><strong>${property.agent_name || "N/A"}</strong></p>
+    <p>${property.agent_phone || ""}</p>
+    <p>${property.agent_email || ""}</p>
 
-    <!-- FOOTER -->
-    <div class="footer">
-      Regrow Code Real Estate © 2025 — Professional Property Brochure
-    </div>
+    <footer>
+      Regrow Code Real Estate © 2025 — Property Brochure
+    </footer>
 
-  </div>
-
-</body>
-</html>
-
+  </body>
+  </html>
   `;
 
   await page.setContent(html, { waitUntil: "networkidle0" });
