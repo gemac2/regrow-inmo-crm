@@ -1,207 +1,179 @@
 "use client";
 
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { 
-  Building, 
-  Users, 
-  Euro, 
-  Calendar, 
-  TrendingUp, 
-  ArrowRight, 
-  Activity,
-  CheckCircle2
-} from "lucide-react";
 import Link from "next/link";
+import { 
+  Building, Users, CheckSquare, Calendar as CalendarIcon, 
+  ArrowRight, MapPin, Clock, TrendingUp 
+} from "lucide-react";
+import { format, parseISO, isToday } from "date-fns";
 
-export default function DashboardHome({ properties = [] }: { properties: any[] }) {
-  
-  // Calcular métricas reales basadas en tus datos
-  const totalProperties = properties.length;
-  const activeProperties = properties.filter(p => p.status === 'available').length;
-  const totalValue = properties.reduce((acc, p) => acc + (p.price || 0), 0);
-  
-  // Datos simulados para "llenar" el diseño (mock data)
-  // En el futuro, esto vendrá de tu tabla 'tasks' y 'activities'
-  const recentActivities = [
-    { id: 1, text: "New lead 'Juan Perez' added", time: "2 hours ago", type: "lead" },
-    { id: 2, text: "Property 'Villa Mar' status changed to Reserved", time: "5 hours ago", type: "status" },
-    { id: 3, text: "Viewing scheduled for 'Apartment Centro'", time: "Yesterday", type: "calendar" },
-  ];
+// Componente para las Tarjetas de KPI
+const StatCard = ({ title, value, icon: Icon, color, link }: any) => (
+  <Link href={link} className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm hover:shadow-md transition-all group">
+    <div className="flex items-center justify-between mb-4">
+      <div className={`p-3 rounded-lg ${color} bg-opacity-10 text-opacity-100`}>
+        <Icon size={24} className={color.replace('bg-', 'text-')} />
+      </div>
+      <span className="text-gray-400 group-hover:text-[#0048BC] transition-colors">
+        <ArrowRight size={18} />
+      </span>
+    </div>
+    <h3 className="text-3xl font-bold text-gray-900 mb-1">{value}</h3>
+    <p className="text-sm text-gray-500 font-medium">{title}</p>
+  </Link>
+);
 
-  const tasks = [
-    { id: 1, title: "Call Maria about offer", due: "Today", priority: "high" },
-    { id: 2, title: "Update photos for Ref-002", due: "Tomorrow", priority: "medium" },
-    { id: 3, title: "Send contract to notary", due: "Fri", priority: "high" },
-  ];
+export default function DashboardHome({ data }: { data: any }) {
+  const { stats, upcomingEvents, latestProperties } = data;
 
   return (
     <div className="space-y-6">
       
-      {/* 1. KPI CARDS (Métricas Superiores) */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        <KpiCard 
-          title="Total Properties" 
-          value={totalProperties} 
+      {/* --- 1. KPI CARDS --- */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <StatCard 
+          title="Active Properties" 
+          value={stats.properties} 
           icon={Building} 
-          trend="+2 this month" 
-          color="text-blue-600"
-          bgColor="bg-blue-50"
+          color="bg-blue-500" 
+          link="/dashboard/properties"
         />
-        <KpiCard 
-          title="Active Listings" 
-          value={activeProperties} 
-          icon={TrendingUp} 
-          trend="85% of portfolio" 
-          color="text-green-600"
-          bgColor="bg-green-50"
+        <StatCard 
+          title="Total Clients" 
+          value={stats.contacts} 
+          icon={Users} 
+          color="bg-green-500" 
+          link="/dashboard/contacts"
         />
-        <KpiCard 
-          title="Portfolio Value" 
-          value={`${(totalValue / 1000000).toFixed(1)}M €`} 
-          icon={Euro} 
-          trend="Avg. 450k / prop" 
-          color="text-purple-600"
-          bgColor="bg-purple-50"
-        />
-        <KpiCard 
+        <StatCard 
           title="Pending Tasks" 
-          value="12" 
-          icon={Calendar} 
-          trend="4 urgent" 
-          color="text-orange-600"
-          bgColor="bg-orange-50"
+          value={stats.tasks} 
+          icon={CheckSquare} 
+          color="bg-orange-500" 
+          link="/dashboard/tasks"
         />
       </div>
 
-      {/* 2. MAIN CONTENT GRID (2 Columnas: Principal + Lateral) */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      {/* --- 2. MAIN CONTENT GRID --- */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         
-        {/* COLUMNA IZQUIERDA (2/3) - Listados y Actividad */}
+        {/* COLUMNA IZQUIERDA: AGENDA (2/3 ancho) */}
         <div className="lg:col-span-2 space-y-6">
           
-          {/* Latest Properties Table */}
-          <Card className="border-gray-200 shadow-sm">
-            <CardHeader className="flex flex-row items-center justify-between pb-2 border-b border-gray-100">
-              <CardTitle className="text-lg font-bold text-gray-800">Latest Properties</CardTitle>
-              <Link href="/dashboard/properties" className="text-sm text-blue-600 hover:underline flex items-center gap-1">
-                View all <ArrowRight size={14} />
+          {/* Upcoming Events */}
+          <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+            <div className="p-5 border-b border-gray-100 flex justify-between items-center">
+              <h3 className="font-bold text-gray-800 flex items-center gap-2">
+                <CalendarIcon size={18} className="text-[#0048BC]" />
+                Upcoming Schedule
+              </h3>
+              <Link href="/dashboard/calendar" className="text-xs font-medium text-blue-600 hover:underline">
+                View Calendar
               </Link>
-            </CardHeader>
-            <CardContent className="p-0">
-              <div className="overflow-x-auto">
-                <table className="w-full text-sm text-left">
-                  <thead className="bg-gray-50 text-gray-500 font-medium">
-                    <tr>
-                      <th className="px-4 py-3">Ref</th>
-                      <th className="px-4 py-3">Title</th>
-                      <th className="px-4 py-3">Price</th>
-                      <th className="px-4 py-3">Status</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-gray-100">
-                    {properties.slice(0, 5).map((p) => (
-                      <tr key={p.id} className="hover:bg-gray-50 transition">
-                        <td className="px-4 py-3 font-mono text-xs text-gray-500">{p.reference || "-"}</td>
-                        <td className="px-4 py-3 font-medium text-gray-900">{p.title}</td>
-                        <td className="px-4 py-3 text-gray-600 font-medium">{p.price?.toLocaleString()} €</td>
-                        <td className="px-4 py-3">
-                          <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium capitalize
-                            ${p.status === 'available' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'}`}>
-                            {p.status}
-                          </span>
-                        </td>
-                      </tr>
-                    ))}
-                    {properties.length === 0 && (
-                      <tr><td colSpan={4} className="p-4 text-center text-gray-500">No properties yet.</td></tr>
-                    )}
-                  </tbody>
-                </table>
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Activity Feed */}
-          <Card className="border-gray-200 shadow-sm">
-            <CardHeader className="pb-2 border-b border-gray-100">
-              <CardTitle className="text-lg font-bold text-gray-800 flex items-center gap-2">
-                <Activity size={18} className="text-gray-400" /> Recent Activity
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="p-4">
-              <div className="space-y-4">
-                {recentActivities.map((act) => (
-                  <div key={act.id} className="flex gap-3 items-start">
-                    <div className="w-2 h-2 mt-2 rounded-full bg-blue-500 shrink-0"></div>
-                    <div>
-                      <p className="text-sm text-gray-800">{act.text}</p>
-                      <p className="text-xs text-gray-400">{act.time}</p>
+            </div>
+            
+            <div className="divide-y divide-gray-100">
+              {upcomingEvents.length > 0 ? (
+                upcomingEvents.map((evt: any) => (
+                  <div key={evt.id} className="p-4 flex items-start gap-4 hover:bg-gray-50 transition">
+                    {/* Fecha Caja */}
+                    <div className="flex flex-col items-center justify-center w-14 h-14 bg-blue-50 text-blue-700 rounded-lg border border-blue-100 shrink-0">
+                      <span className="text-xs font-bold uppercase">{format(parseISO(evt.start_time), "MMM")}</span>
+                      <span className="text-lg font-bold">{format(parseISO(evt.start_time), "dd")}</span>
                     </div>
-                  </div>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
 
-        </div>
-
-        {/* COLUMNA DERECHA (1/3) - Tareas y Accesos */}
-        <div className="space-y-6">
-          
-          {/* Tasks Widget */}
-          <Card className="border-gray-200 shadow-sm bg-white">
-            <CardHeader className="pb-2 border-b border-gray-100 bg-yellow-50/50">
-              <CardTitle className="text-lg font-bold text-gray-800 flex items-center gap-2">
-                <CheckCircle2 size={18} className="text-yellow-600" /> My Tasks
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="p-0">
-              <ul className="divide-y divide-gray-100">
-                {tasks.map((task) => (
-                  <li key={task.id} className="p-4 flex items-start gap-3 hover:bg-gray-50 transition cursor-pointer group">
-                    <input type="checkbox" className="mt-1 border-gray-300 rounded text-blue-600 focus:ring-blue-500" />
-                    <div>
-                      <span className="text-sm font-medium text-gray-800 group-hover:text-blue-600 transition">{task.title}</span>
-                      <div className="flex items-center gap-2 mt-1">
-                        <span className="text-xs text-gray-500 bg-gray-100 px-1.5 rounded">{task.due}</span>
-                        {task.priority === 'high' && <span className="text-xs text-red-600 font-bold">! Urgent</span>}
+                    {/* Info Evento */}
+                    <div className="flex-1 min-w-0">
+                      <div className="flex justify-between items-start">
+                        <h4 className="font-semibold text-gray-900 truncate">{evt.title}</h4>
+                        {isToday(parseISO(evt.start_time)) && (
+                            <span className="bg-red-100 text-red-600 text-[10px] font-bold px-2 py-0.5 rounded-full uppercase">Today</span>
+                        )}
+                      </div>
+                      
+                      <div className="flex items-center gap-3 text-sm text-gray-500 mt-1">
+                        <span className="flex items-center gap-1">
+                          <Clock size={14} /> 
+                          {format(parseISO(evt.start_time), "HH:mm")}
+                        </span>
+                        {evt.properties && (
+                          <span className="flex items-center gap-1 truncate text-blue-600">
+                             • {evt.properties.reference}
+                          </span>
+                        )}
+                        {evt.contacts && (
+                           <span className="truncate">
+                             • {evt.contacts.full_name}
+                           </span>
+                        )}
                       </div>
                     </div>
-                  </li>
-                ))}
-              </ul>
-              <div className="p-3 border-t border-gray-100 text-center">
-                <button className="text-sm text-blue-600 hover:text-blue-800 font-medium">+ Add Task</button>
-              </div>
-            </CardContent>
-          </Card>
+                  </div>
+                ))
+              ) : (
+                <div className="p-8 text-center text-gray-400">
+                  <p>No upcoming events.</p>
+                  <Link href="/dashboard/calendar" className="text-blue-600 text-sm hover:underline mt-1 block">Schedule a viewing</Link>
+                </div>
+              )}
+            </div>
+          </div>
 
-          {/* Quick Actions / Contacts */}
-          <div className="bg-gradient-to-br from-[#0048BC] to-[#003388] rounded-xl p-6 text-white shadow-lg">
-            <h3 className="font-bold text-lg mb-2">Need Help?</h3>
-            <p className="text-blue-100 text-sm mb-4">Contact support or check our documentation for CRM updates.</p>
-            <button className="w-full bg-white/10 hover:bg-white/20 text-white border border-white/20 rounded-lg py-2 text-sm font-medium transition">
-              Open Documentation
-            </button>
+          {/* Newest Properties */}
+          <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+             <div className="p-5 border-b border-gray-100 flex justify-between items-center">
+              <h3 className="font-bold text-gray-800 flex items-center gap-2">
+                <TrendingUp size={18} className="text-green-600" />
+                Newest Inventory
+              </h3>
+              <Link href="/dashboard/properties" className="text-xs font-medium text-blue-600 hover:underline">
+                View All
+              </Link>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 p-4">
+                {latestProperties.map((prop: any) => (
+                    <Link key={prop.id} href={`/dashboard/properties/${prop.id}`} className="flex gap-3 p-2 rounded-lg hover:bg-gray-50 border border-transparent hover:border-gray-200 transition group">
+                        <div className="w-16 h-16 bg-gray-200 rounded-md overflow-hidden shrink-0">
+                            {prop.images?.[0] ? (
+                                <img src={prop.images[0]} className="w-full h-full object-cover" alt="prop" />
+                            ) : (
+                                <div className="w-full h-full flex items-center justify-center text-gray-400"><Building size={20} /></div>
+                            )}
+                        </div>
+                        <div className="min-w-0">
+                            <p className="text-xs font-bold text-blue-600 mb-0.5">{prop.reference}</p>
+                            <h4 className="font-medium text-gray-900 text-sm truncate">{prop.title}</h4>
+                            <p className="text-xs text-gray-500 truncate">{prop.city} • {Number(prop.price).toLocaleString()} €</p>
+                        </div>
+                    </Link>
+                ))}
+            </div>
           </div>
 
         </div>
-      </div>
-    </div>
-  );
-}
 
-// Subcomponente simple para las tarjetas de KPI
-function KpiCard({ title, value, icon: Icon, trend, color, bgColor }: any) {
-  return (
-    <div className="bg-white rounded-xl p-5 border border-gray-200 shadow-sm flex items-start justify-between hover:shadow-md transition-shadow">
-      <div>
-        <p className="text-sm font-medium text-gray-500 mb-1">{title}</p>
-        <h3 className="text-2xl font-bold text-gray-900">{value}</h3>
-        {trend && <p className="text-xs text-gray-400 mt-1">{trend}</p>}
-      </div>
-      <div className={`p-3 rounded-lg ${bgColor}`}>
-        <Icon size={22} className={color} />
+        {/* COLUMNA DERECHA: SIDEBAR (1/3 ancho) */}
+        <div className="space-y-6">
+          {/* Quick Actions */}
+          <div className="bg-[#0048BC] rounded-xl shadow-lg p-6 text-white">
+            <h3 className="font-bold text-lg mb-4">Quick Actions</h3>
+            <div className="space-y-3">
+                <Link href="/dashboard/properties/new" className="flex items-center justify-between p-3 bg-white/10 hover:bg-white/20 rounded-lg transition backdrop-blur-sm cursor-pointer">
+                    <span className="text-sm font-medium">Add Property</span>
+                    <ArrowRight size={16} />
+                </Link>
+                <Link href="/dashboard/contacts/new" className="flex items-center justify-between p-3 bg-white/10 hover:bg-white/20 rounded-lg transition backdrop-blur-sm cursor-pointer">
+                    <span className="text-sm font-medium">Create Contact</span>
+                    <ArrowRight size={16} />
+                </Link>
+                <Link href="/dashboard/calendar" className="flex items-center justify-between p-3 bg-white/10 hover:bg-white/20 rounded-lg transition backdrop-blur-sm cursor-pointer">
+                    <span className="text-sm font-medium">Schedule Viewing</span>
+                    <ArrowRight size={16} />
+                </Link>
+            </div>
+          </div>
+        </div>
+
       </div>
     </div>
   );

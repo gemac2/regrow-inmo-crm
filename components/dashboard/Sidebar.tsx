@@ -1,23 +1,15 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { 
-  Home, 
-  Building, 
-  Users, 
-  Calendar, 
-  CheckSquare, 
-  Settings, 
-  HelpCircle,
-  LogOut,
-  Clock
+  Home, Building, Users, Calendar, CheckSquare, Settings, HelpCircle, LogOut, Clock 
 } from "lucide-react";
 import { logout } from "@/app/auth/logout/action"; 
+import { getRecentlyViewed } from "@/app/dashboard/recent/actions"; // <--- Importamos la acción
 
-// --- CONFIGURACIÓN DE MENÚS ---
-// href: la ruta a la que navega
-// exact: true si solo debe activarse en esa ruta exacta (para el dashboard principal)
+// ... (mainMenu y systemMenu se quedan igual)
 const mainMenu = [
   { name: "Dashboard", href: "/dashboard", icon: Home, exact: true },
   { name: "Properties", href: "/dashboard/properties", icon: Building },
@@ -31,41 +23,40 @@ const systemMenu = [
   { name: "Help & Support", href: "/dashboard/help", icon: HelpCircle },
 ];
 
-// Mock Data para 'Recientes' (Zuletzt angesehen)
-// Esto simula historial de navegación rápida
-const recentlyViewed = [
-  { id: "1", title: "Villa en Marbella", reference: "REF-001", href: "/dashboard/properties/1", type: "property" },
-  { id: "2", title: "Apartamento Centro", reference: "REF-004", href: "/dashboard/properties/2", type: "property" },
-  { id: "3", title: "Juan Pérez", reference: "Cliente", href: "/dashboard/contacts/3", type: "contact" },
-];
-
 export default function Sidebar() {
-  const pathname = usePathname(); // Hook para obtener la URL actual
+  const pathname = usePathname();
+  const [recentlyViewed, setRecentlyViewed] = useState<any[]>([]); // Estado dinámico
 
-  // Lógica robusta para detectar la pestaña activa
+  // EFECTO: Cargar historial cada vez que cambiamos de ruta
+  useEffect(() => {
+    const fetchRecent = async () => {
+      const items = await getRecentlyViewed();
+      setRecentlyViewed(items);
+    };
+    
+    // Pequeño delay para dar tiempo a que la página guarde el registro en DB primero
+    const timer = setTimeout(() => {
+        fetchRecent();
+    }, 500);
+
+    return () => clearTimeout(timer);
+  }, [pathname]); // Se ejecuta al cambiar de URL
+
   const isActive = (href: string, exact: boolean = false) => {
     if (!pathname) return false;
-    if (exact) {
-      return pathname === href;
-    }
-    // "startsWith" permite que /dashboard/contacts/new active el botón "Contacts"
+    if (exact) return pathname === href;
     return pathname.startsWith(href);
   };
 
-  // Helper para renderizar cada item del menú
   const renderMenuItem = (item: any) => {
     const Icon = item.icon;
     const active = isActive(item.href, item.exact);
-
     return (
       <Link
         key={item.href}
         href={item.href}
         className={`w-full flex items-center gap-3 px-3 py-2 rounded-md text-sm font-medium transition-all duration-200
-          ${active 
-            ? "bg-[#0048BC] text-white shadow-sm" 
-            : "text-gray-600 hover:bg-gray-100 hover:text-gray-900"
-          }
+          ${active ? "bg-[#0048BC] text-white shadow-sm" : "text-gray-600 hover:bg-gray-100 hover:text-gray-900"}
         `}
       >
         <Icon size={18} className={active ? "text-white" : "text-gray-400 group-hover:text-gray-600"} />
@@ -75,64 +66,57 @@ export default function Sidebar() {
   };
 
   return (
-    <aside className="w-64 bg-white border-r border-gray-200 flex flex-col h-full sticky top-0">
+    <aside className="w-64 bg-white border-r border-gray-200 flex flex-col h-full sticky top-0 shrink-0 z-40">
       
-      {/* HEADER / LOGO */}
+      {/* HEADER */}
       <div className="h-16 flex items-center px-6 border-b border-gray-100 shrink-0">
         <Link href="/dashboard" className="font-bold text-xl text-[#0048BC]">
           Regrow<span className="text-gray-400">.CRM</span>
         </Link>
       </div>
 
-      {/* --- ÁREA SCROLLABLE --- */}
+      {/* BODY */}
       <div className="flex-1 overflow-y-auto py-6 px-4 space-y-8">
         
-        {/* 1. MAIN MENU */}
+        {/* MENU */}
         <div className="space-y-1">
-          <p className="px-3 text-xs font-bold text-gray-400 uppercase tracking-wider mb-3">
-            Menu
-          </p>
+          <p className="px-3 text-xs font-bold text-gray-400 uppercase tracking-wider mb-3">Menu</p>
           {mainMenu.map(renderMenuItem)}
         </div>
 
-        {/* 2. RECIENTES (Zuletzt angesehen) */}
-        <div className="space-y-3">
-          <div className="flex items-center gap-2 px-3 text-gray-400 mb-2">
-            <Clock size={14} />
-            <p className="text-xs font-bold uppercase tracking-wider">Recently Viewed</p>
+        {/* RECENTLY VIEWED DINÁMICO */}
+        {recentlyViewed.length > 0 && (
+          <div className="space-y-3 animate-in fade-in duration-500">
+            <div className="flex items-center gap-2 px-3 text-gray-400 mb-2">
+              <Clock size={14} />
+              <p className="text-xs font-bold uppercase tracking-wider">Recently Viewed</p>
+            </div>
+            
+            <div className="space-y-1">
+              {recentlyViewed.map((item) => (
+                <Link
+                  key={item.id}
+                  href={item.href}
+                  className="block w-full text-left px-3 py-2 rounded-md hover:bg-gray-50 group transition-colors"
+                >
+                  <div className="text-sm font-medium text-gray-700 group-hover:text-[#0048BC] truncate">
+                    {item.title}
+                  </div>
+                  <div className="text-xs text-gray-400 flex items-center gap-1">
+                    <span className={`w-1.5 h-1.5 rounded-full ${item.type === 'property' ? 'bg-blue-400' : 'bg-green-400'}`}></span>
+                    {item.reference}
+                  </div>
+                </Link>
+              ))}
+            </div>
           </div>
-          
-          <div className="space-y-1">
-            {recentlyViewed.map((item) => (
-              <Link
-                key={item.id}
-                href={item.href}
-                className="block w-full text-left px-3 py-2 rounded-md hover:bg-gray-50 group transition-colors"
-              >
-                <div className="text-sm font-medium text-gray-700 group-hover:text-[#0048BC] truncate">
-                  {item.title}
-                </div>
-                <div className="text-xs text-gray-400 flex items-center gap-1">
-                  <span className={`w-1.5 h-1.5 rounded-full ${item.type === 'property' ? 'bg-blue-400' : 'bg-green-400'}`}></span>
-                  {item.reference}
-                </div>
-              </Link>
-            ))}
-          </div>
-        </div>
+        )}
 
-        {/* 3. SYSTEM & LOGOUT */}
+        {/* SYSTEM */}
         <div className="space-y-1">
-          <p className="px-3 text-xs font-bold text-gray-400 uppercase tracking-wider mb-3">
-            System
-          </p>
+          <p className="px-3 text-xs font-bold text-gray-400 uppercase tracking-wider mb-3">System</p>
           {systemMenu.map(renderMenuItem)}
-          
-          {/* Botón Logout */}
-          <button
-            onClick={() => logout()}
-            className="w-full flex items-center gap-3 px-3 py-2 rounded-md text-sm font-medium text-gray-600 hover:bg-red-50 hover:text-red-600 transition-colors"
-          >
+          <button onClick={() => logout()} className="w-full flex items-center gap-3 px-3 py-2 rounded-md text-sm font-medium text-gray-600 hover:bg-red-50 hover:text-red-600 transition-colors">
             <LogOut size={18} className="text-gray-400 group-hover:text-red-500" />
             Sign Out
           </button>

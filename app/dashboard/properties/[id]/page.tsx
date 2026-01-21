@@ -1,4 +1,5 @@
 import { getProperty } from "@/app/dashboard/properties/actions"; // Ajusta la ruta si es necesario
+import { addToHistory } from "@/app/dashboard/recent/actions";
 import Image from "next/image";
 import Link from "next/link";
 import { 
@@ -30,6 +31,8 @@ export default async function PropertyDetailsPage({ params }: any) {
       </div>
     );
   }
+
+  addToHistory({ property_id: id }).catch(console.error);
 
   // Formateadores
   const formattedPrice = property.price ? Number(property.price).toLocaleString("de-DE") + " €" : "Price on request";
