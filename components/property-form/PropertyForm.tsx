@@ -1,25 +1,17 @@
 "use client";
 
 import { useState } from "react";
-import { Accordion, AccordionItem, AccordionTrigger, AccordionContent } from "@/components/ui/accordion";
+import { useRouter } from "next/navigation";
+import { createProperty, updateProperty } from "@/app/dashboard/properties/actions";
+import ImageUploader from "./ImageUploader";
+
+// UI Components
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
-import { createProperty, updateProperty } from "@/app/properties/actions";
-import { useRouter } from "next/navigation";
-import ImageUploader from "./ImageUploader";
-import { updatePropertyImages } from "@/app/properties/actions";
-import { 
-  Building2, 
-  Home, 
-  Ruler, 
-  Zap, 
-  User, 
-  Image as ImageIcon,
-  Plus,
-  CheckCircle2
-} from "lucide-react";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Loader2, Save, X, Plus } from "lucide-react";
 
 interface PropertyFormProps {
   initialData?: any;
@@ -27,755 +19,473 @@ interface PropertyFormProps {
   isEdit?: boolean;
 }
 
-export default function PropertyForm({ initialData, propertyId, isEdit = false }: PropertyFormProps = {}) {
+// Helper para filas de formulario (Label izquierda - Input derecha)
+const FormRow = ({ label, children, className = "" }: { label: string, children: React.ReactNode, className?: string }) => (
+  <div className={`grid grid-cols-12 gap-4 items-center mb-3 ${className}`}>
+    <div className="col-span-4 lg:col-span-3">
+      <Label className="text-gray-500 font-normal text-sm">{label}</Label>
+    </div>
+    <div className="col-span-8 lg:col-span-9">
+      {children}
+    </div>
+  </div>
+);
+
+// Helper para secciones
+const FormSection = ({ title, children }: { title: string, children: React.ReactNode }) => (
+  <div className="mb-8 border-b pb-6 last:border-0">
+    <h3 className="text-base font-bold text-gray-900 mb-4 uppercase tracking-wide">{title}</h3>
+    {children}
+  </div>
+);
+
+export default function PropertyForm({ initialData, propertyId, isEdit = false }: PropertyFormProps) {
   const router = useRouter();
+  const [loading, setLoading] = useState(false);
+  const [featureInput, setFeatureInput] = useState("");
 
-  const [form, setForm] = useState<any>(() => {
-    if (initialData) {
-      // Pre-llenar el formulario con los datos existentes
-      return {
-        reference: initialData.reference || "",
-        title: initialData.title || "",
-        city: initialData.city || "",
-        price: initialData.price?.toString() || "",
-        description: initialData.description || "",
+  // Estado inicial con TODOS los campos
+  const [formData, setFormData] = useState(initialData || {
+    // Master Data
+    reference: "",
+    title: "",
+    status: "available",
+    category: "sale",
+    property_type: "apartment",
+    availability: "Immediate",
+    description: "",
 
-        year_built: initialData.year_built || "",
-        construction_type: initialData.construction_type || "",
-        condition: initialData.condition || "",
-        equipment_quality: initialData.equipment_quality || "",
-        community_fee: initialData.community_fee || "",
-        property_tax: initialData.property_tax || "",
-        garbage_fee: initialData.garbage_fee || "",
-        last_renovation: initialData.last_renovation || "",
-        availability: initialData.availability || "",
+    // Address & Location
+    address: "",
+    city: "",
+    zip_code: "",
+    country: "Spain",
+    orientation: "",
+    views: "",
 
-        floors: initialData.floors || "",
-        floor_block: initialData.floor_block || "",
-        bedrooms: initialData.bedrooms || "",
-        bathrooms: initialData.bathrooms || "",
-        usable_area: initialData.usable_area || "",
-        built_area: initialData.built_area || "",
-        terrace_m2: initialData.terrace_m2 || "",
-        garden_m2: initialData.garden_m2 || "",
-        parking_spaces: initialData.parking_spaces || "",
-        orientation: initialData.orientation || "",
-        views: initialData.views || "",
+    // Specs & Building
+    year_built: "",
+    construction_type: "Existing",
+    condition: "Good",
+    equipment_quality: "Standard",
+    last_renovation: "",
+    floors: "",
+    floor_block: "",
 
-        energy_certificate_available: initialData.energy_certificate_available || "",
-        certificate_issued_at: initialData.certificate_issued_at || "",
-        energy_class: initialData.energy_class || "",
-        certificate_expires_at: initialData.certificate_expires_at || "",
-        heating_type: initialData.heating_type || "",
-        energy_consumption_index: initialData.energy_consumption_index || "",
-        main_energy_source: initialData.main_energy_source || "",
+    // Areas
+    usable_area: "",
+    built_area: "",
+    terrace_m2: "",
+    garden_m2: "",
+    parking_spaces: "",
+    bedrooms: "",
+    bathrooms: "",
 
-        agent_name: initialData.agent_name || "",
-        agent_phone: initialData.agent_phone || "",
-        agent_email: initialData.agent_email || "",
-        agent_address: initialData.agent_address || "",
-        agent_photo_url: initialData.agent_photo_url || "",
+    // Financials
+    price: "",
+    community_fee: "", // Mensual
+    property_tax: "",  // IBI Anual
+    garbage_fee: "",   // Anual
 
-        main_features: initialData.main_features || [],
-      };
-    }
-    // Formulario vacío para crear nueva propiedad
-    return {
-      reference: "",
-      title: "",
-      city: "",
-      price: "",
-      description: "",
+    // Energy Certificate
+    energy_certificate_available: "yes",
+    energy_class: "",
+    energy_consumption_index: "",
+    heating_type: "",
+    main_energy_source: "",
+    certificate_issued_at: "",
+    certificate_expires_at: "",
 
-      year_built: "",
-      construction_type: "",
-      condition: "",
-      equipment_quality: "",
-      community_fee: "",
-      property_tax: "",
-      garbage_fee: "",
-      last_renovation: "",
-      availability: "",
+    // Agent
+    agent_name: "",
+    agent_email: "",
+    agent_phone: "",
+    agent_address: "",
+    agent_photo_url: "",
 
-      floors: "",
-      floor_block: "",
-      bedrooms: "",
-      bathrooms: "",
-      usable_area: "",
-      built_area: "",
-      terrace_m2: "",
-      garden_m2: "",
-      parking_spaces: "",
-      orientation: "",
-      views: "",
-
-      energy_certificate_available: "",
-      certificate_issued_at: "",
-      energy_class: "",
-      certificate_expires_at: "",
-      heating_type: "",
-      energy_consumption_index: "",
-      main_energy_source: "",
-
-      agent_name: "",
-      agent_phone: "",
-      agent_email: "",
-      agent_address: "",
-      agent_photo_url: "",
-
-      main_features: [],
-    };
+    // Extras
+    images: [],
+    main_features: [],
   });
 
-  const [images, setImages] = useState(() => initialData?.images || []);
-  const [createdId, setCreatedId] = useState<string | null>(propertyId || null);
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+    const { name, value } = e.target;
+    setFormData((prev: any) => ({ ...prev, [name]: value }));
+  };
 
+  const handleSelectChange = (name: string, value: string) => {
+    setFormData((prev: any) => ({ ...prev, [name]: value }));
+  };
 
-  function setValue(key: string, value: any) {
-    setForm((prev: any) => ({ ...prev, [key]: value }));
-  }
+  const handleImagesChange = (urls: string[]) => {
+    setFormData((prev: any) => ({ ...prev, images: urls }));
+  };
 
-  async function handleSubmit(e: any) {
-    e.preventDefault();
-
-    if (isEdit && propertyId) {
-      // Actualizar propiedad existente
-      await updateProperty(propertyId, {
-        ...form,
-        price: Number(form.price),
-      });
-      
-      // Actualizar imágenes si hay cambios
-      if (images.length > 0) {
-        await updatePropertyImages(propertyId, images);
+  // Manejo de Features (Tags)
+  const addFeature = (e: React.KeyboardEvent) => {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      if (featureInput.trim()) {
+        setFormData((prev: any) => ({
+          ...prev,
+          main_features: [...(prev.main_features || []), featureInput.trim()]
+        }));
+        setFeatureInput("");
       }
-      
-      // Redirigir al dashboard de properties después de actualizar
-      router.push("/dashboard/properties");
-    } else {
-      // Crear nueva propiedad
-      const newId = await createProperty({
-        ...form,
-        price: Number(form.price),
-        images: []  // empty value by default
-      });
-
-      setCreatedId(newId);
-      
-      // No redirigir inmediatamente, esperar a que el usuario suba las imágenes
-      // El usuario puede hacer clic en "Finish & Save Photos" cuando termine
     }
-  }
+  };
 
+  const removeFeature = (index: number) => {
+    setFormData((prev: any) => ({
+      ...prev,
+      main_features: prev.main_features.filter((_: any, i: number) => i !== index)
+    }));
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+
+    try {
+      // Convertir strings numéricos a números reales
+      const payload = {
+        ...formData,
+        price: Number(formData.price) || 0,
+        bedrooms: Number(formData.bedrooms) || 0,
+        bathrooms: Number(formData.bathrooms) || 0,
+        usable_area: Number(formData.usable_area) || 0,
+        built_area: Number(formData.built_area) || 0,
+        terrace_m2: Number(formData.terrace_m2) || 0,
+        garden_m2: Number(formData.garden_m2) || 0,
+        year_built: Number(formData.year_built) || null,
+        floors: Number(formData.floors) || null,
+        parking_spaces: Number(formData.parking_spaces) || 0,
+        community_fee: Number(formData.community_fee) || 0,
+        property_tax: Number(formData.property_tax) || 0,
+        garbage_fee: Number(formData.garbage_fee) || 0,
+        last_renovation: Number(formData.last_renovation) || null,
+      };
+
+      if (isEdit && propertyId) {
+        await updateProperty(propertyId, payload);
+      } else {
+        await createProperty(payload);
+      }
+      router.push("/dashboard/properties");
+      router.refresh();
+    } catch (error) {
+      console.error("Error saving property:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-6">
-      <Accordion type="multiple" className="w-full space-y-3">
-
-        {/* GENERAL INFORMATION */}
-        <AccordionItem value="general" className="border border-gray-200 rounded-lg px-4 hover:border-[#0048BC]/50 transition-colors">
-          <AccordionTrigger className="text-lg font-semibold text-gray-900 hover:no-underline py-4">
-            <div className="flex items-center gap-3">
-              <div className="p-2 bg-[#0048BC]/10 rounded-lg">
-                <Building2 size={20} className="text-[#0048BC]" />
-              </div>
-              <span>General Information</span>
-            </div>
-          </AccordionTrigger>
-          <AccordionContent className="space-y-5 pt-4 pb-6">
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-              <div>
-                <Label className="text-sm font-medium text-gray-700 mb-2 block">Reference</Label>
-                <Input
-                  value={form.reference}
-                  onChange={(e) => setValue("reference", e.target.value)}
-                  className="border-gray-300 focus:border-[#0048BC] focus:ring-[#0048BC]/20"
-                  placeholder="PROP-001"
-                />
-              </div>
-
-              <div>
-                <Label className="text-sm font-medium text-gray-700 mb-2 block">City</Label>
-                <Input
-                  value={form.city}
-                  onChange={(e) => setValue("city", e.target.value)}
-                  className="border-gray-300 focus:border-[#0048BC] focus:ring-[#0048BC]/20"
-                  placeholder="Madrid"
-                />
-              </div>
-            </div>
-
-            <div>
-              <Label className="text-sm font-medium text-gray-700 mb-2 block">Property Title</Label>
-              <Input
-                value={form.title}
-                onChange={(e) => setValue("title", e.target.value)}
-                className="border-gray-300 focus:border-[#0048BC] focus:ring-[#0048BC]/20"
-                placeholder="Beautiful apartment in city center"
-              />
-            </div>
-
-            <div>
-              <Label className="text-sm font-medium text-gray-700 mb-2 block">Price (€)</Label>
-              <Input
-                type="number"
-                value={form.price}
-                onChange={(e) => setValue("price", e.target.value)}
-                className="border-gray-300 focus:border-[#0048BC] focus:ring-[#0048BC]/20"
-                placeholder="250000"
-              />
-            </div>
-
-          </AccordionContent>
-        </AccordionItem>
-
-        {/* DESCRIPTION SECTION */}
-        <AccordionItem value="description" className="border border-gray-200 rounded-lg px-4 hover:border-[#0048BC]/50 transition-colors">
-          <AccordionTrigger className="text-lg font-semibold text-gray-900 hover:no-underline py-4">
-            <div className="flex items-center gap-3">
-              <div className="p-2 bg-blue-100 rounded-lg">
-                <Home size={20} className="text-blue-600" />
-              </div>
-              <span>Description</span>
-            </div>
-          </AccordionTrigger>
-          <AccordionContent className="pt-4 pb-6">
-            <div>
-              <Label className="text-sm font-medium text-gray-700 mb-2 block">Property Description</Label>
-              <Textarea
-                value={form.description}
-                onChange={(e) => setValue("description", e.target.value)}
-                rows={6}
-                className="border-gray-300 focus:border-[#0048BC] focus:ring-[#0048BC]/20"
-                placeholder="Describe the property in detail..."
-              />
-            </div>
-          </AccordionContent>
-        </AccordionItem>
-
-        {/* PROPERTY DETAILS */}
-        <AccordionItem value="details" className="border border-gray-200 rounded-lg px-4 hover:border-[#0048BC]/50 transition-colors">
-          <AccordionTrigger className="text-lg font-semibold text-gray-900 hover:no-underline py-4">
-            <div className="flex items-center gap-3">
-              <div className="p-2 bg-green-100 rounded-lg">
-                <Home size={20} className="text-green-600" />
-              </div>
-              <span>Property Details</span>
-            </div>
-          </AccordionTrigger>
-          <AccordionContent className="space-y-4 pt-4 pb-6">
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-              <div>
-                <Label className="text-sm font-medium text-gray-700 mb-2 block">Year Built</Label>
-                <Input
-                  type="number"
-                  value={form.year_built || ""}
-                  onChange={(e) => setValue("year_built", e.target.value)}
-                  className="border-gray-300 focus:border-[#0048BC] focus:ring-[#0048BC]/20"
-                  placeholder="2020"
-                />
-              </div>
-
-              <div>
-                <Label className="text-sm font-medium text-gray-700 mb-2 block">Construction Type</Label>
-                <Input
-                  value={form.construction_type || ""}
-                  onChange={(e) => setValue("construction_type", e.target.value)}
-                  className="border-gray-300 focus:border-[#0048BC] focus:ring-[#0048BC]/20"
-                  placeholder="New construction"
-                />
-              </div>
-
-              <div>
-                <Label className="text-sm font-medium text-gray-700 mb-2 block">Condition</Label>
-                <Input
-                  value={form.condition || ""}
-                  onChange={(e) => setValue("condition", e.target.value)}
-                  className="border-gray-300 focus:border-[#0048BC] focus:ring-[#0048BC]/20"
-                  placeholder="Excellent"
-                />
-              </div>
-
-              <div>
-                <Label className="text-sm font-medium text-gray-700 mb-2 block">Equipment Quality</Label>
-                <Input
-                  value={form.equipment_quality || ""}
-                  onChange={(e) => setValue("equipment_quality", e.target.value)}
-                  className="border-gray-300 focus:border-[#0048BC] focus:ring-[#0048BC]/20"
-                  placeholder="High"
-                />
-              </div>
-
-              <div>
-                <Label className="text-sm font-medium text-gray-700 mb-2 block">Community Fee (€/month)</Label>
-                <Input
-                  type="number"
-                  value={form.community_fee || ""}
-                  onChange={(e) => setValue("community_fee", e.target.value)}
-                  className="border-gray-300 focus:border-[#0048BC] focus:ring-[#0048BC]/20"
-                  placeholder="150"
-                />
-              </div>
-
-              <div>
-                <Label className="text-sm font-medium text-gray-700 mb-2 block">Property Tax (IBI) (€/year)</Label>
-                <Input
-                  type="number"
-                  value={form.property_tax || ""}
-                  onChange={(e) => setValue("property_tax", e.target.value)}
-                  className="border-gray-300 focus:border-[#0048BC] focus:ring-[#0048BC]/20"
-                  placeholder="1200"
-                />
-              </div>
-
-              <div>
-                <Label className="text-sm font-medium text-gray-700 mb-2 block">Garbage Fee (€/month)</Label>
-                <Input
-                  type="number"
-                  value={form.garbage_fee || ""}
-                  onChange={(e) => setValue("garbage_fee", e.target.value)}
-                  className="border-gray-300 focus:border-[#0048BC] focus:ring-[#0048BC]/20"
-                  placeholder="25"
-                />
-              </div>
-
-              <div>
-                <Label className="text-sm font-medium text-gray-700 mb-2 block">Last Renovation</Label>
-                <Input
-                  type="number"
-                  value={form.last_renovation || ""}
-                  onChange={(e) => setValue("last_renovation", e.target.value)}
-                  className="border-gray-300 focus:border-[#0048BC] focus:ring-[#0048BC]/20"
-                  placeholder="2023"
-                />
-              </div>
-
-              <div className="md:col-span-2">
-                <Label className="text-sm font-medium text-gray-700 mb-2 block">Availability</Label>
-                <Input
-                  value={form.availability || ""}
-                  onChange={(e) => setValue("availability", e.target.value)}
-                  className="border-gray-300 focus:border-[#0048BC] focus:ring-[#0048BC]/20"
-                  placeholder="Available now"
-                />
-              </div>
-            </div>
-
-          </AccordionContent>
-        </AccordionItem>
-
-        {/* DIMENSIONS & ROOMS */}
-        <AccordionItem value="dimensions" className="border border-gray-200 rounded-lg px-4 hover:border-[#0048BC]/50 transition-colors">
-          <AccordionTrigger className="text-lg font-semibold text-gray-900 hover:no-underline py-4">
-            <div className="flex items-center gap-3">
-              <div className="p-2 bg-purple-100 rounded-lg">
-                <Ruler size={20} className="text-purple-600" />
-              </div>
-              <span>Dimensions & Rooms</span>
-            </div>
-          </AccordionTrigger>
-
-          <AccordionContent className="pt-4 pb-6">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-              <div>
-                <Label className="text-sm font-medium text-gray-700 mb-2 block">Floors</Label>
-                <Input
-                  type="number"
-                  value={form.floors || ""}
-                  onChange={(e) => setValue("floors", e.target.value)}
-                  className="border-gray-300 focus:border-[#0048BC] focus:ring-[#0048BC]/20"
-                  placeholder="3"
-                />
-              </div>
-
-              <div>
-                <Label className="text-sm font-medium text-gray-700 mb-2 block">Floor / Block</Label>
-                <Input
-                  value={form.floor_block || ""}
-                  onChange={(e) => setValue("floor_block", e.target.value)}
-                  className="border-gray-300 focus:border-[#0048BC] focus:ring-[#0048BC]/20"
-                  placeholder="2nd Floor, Block A"
-                />
-              </div>
-
-              <div>
-                <Label className="text-sm font-medium text-gray-700 mb-2 block">Bedrooms</Label>
-                <Input
-                  type="number"
-                  value={form.bedrooms || ""}
-                  onChange={(e) => setValue("bedrooms", e.target.value)}
-                  className="border-gray-300 focus:border-[#0048BC] focus:ring-[#0048BC]/20"
-                  placeholder="3"
-                />
-              </div>
-
-              <div>
-                <Label className="text-sm font-medium text-gray-700 mb-2 block">Bathrooms</Label>
-                <Input
-                  type="number"
-                  value={form.bathrooms || ""}
-                  onChange={(e) => setValue("bathrooms", e.target.value)}
-                  className="border-gray-300 focus:border-[#0048BC] focus:ring-[#0048BC]/20"
-                  placeholder="2"
-                />
-              </div>
-
-              <div>
-                <Label className="text-sm font-medium text-gray-700 mb-2 block">Usable Area (m²)</Label>
-                <Input
-                  type="number"
-                  value={form.usable_area || ""}
-                  onChange={(e) => setValue("usable_area", e.target.value)}
-                  className="border-gray-300 focus:border-[#0048BC] focus:ring-[#0048BC]/20"
-                  placeholder="120"
-                />
-              </div>
-
-              <div>
-                <Label className="text-sm font-medium text-gray-700 mb-2 block">Built Area (m²)</Label>
-                <Input
-                  type="number"
-                  value={form.built_area || ""}
-                  onChange={(e) => setValue("built_area", e.target.value)}
-                  className="border-gray-300 focus:border-[#0048BC] focus:ring-[#0048BC]/20"
-                  placeholder="150"
-                />
-              </div>
-
-              <div>
-                <Label className="text-sm font-medium text-gray-700 mb-2 block">Terrace (m²)</Label>
-                <Input
-                  type="number"
-                  value={form.terrace_m2 || ""}
-                  onChange={(e) => setValue("terrace_m2", e.target.value)}
-                  className="border-gray-300 focus:border-[#0048BC] focus:ring-[#0048BC]/20"
-                  placeholder="20"
-                />
-              </div>
-
-              <div>
-                <Label className="text-sm font-medium text-gray-700 mb-2 block">Garden (m²)</Label>
-                <Input
-                  type="number"
-                  value={form.garden_m2 || ""}
-                  onChange={(e) => setValue("garden_m2", e.target.value)}
-                  className="border-gray-300 focus:border-[#0048BC] focus:ring-[#0048BC]/20"
-                  placeholder="50"
-                />
-              </div>
-
-              <div>
-                <Label className="text-sm font-medium text-gray-700 mb-2 block">Parking Spaces</Label>
-                <Input
-                  type="number"
-                  value={form.parking_spaces || ""}
-                  onChange={(e) => setValue("parking_spaces", e.target.value)}
-                  className="border-gray-300 focus:border-[#0048BC] focus:ring-[#0048BC]/20"
-                  placeholder="1"
-                />
-              </div>
-
-              <div>
-                <Label className="text-sm font-medium text-gray-700 mb-2 block">Orientation</Label>
-                <Input
-                  value={form.orientation || ""}
-                  onChange={(e) => setValue("orientation", e.target.value)}
-                  className="border-gray-300 focus:border-[#0048BC] focus:ring-[#0048BC]/20"
-                  placeholder="South"
-                />
-              </div>
-
-              <div className="md:col-span-2">
-                <Label className="text-sm font-medium text-gray-700 mb-2 block">Views</Label>
-                <Input
-                  value={form.views || ""}
-                  onChange={(e) => setValue("views", e.target.value)}
-                  className="border-gray-300 focus:border-[#0048BC] focus:ring-[#0048BC]/20"
-                  placeholder="Sea view, Mountain view"
-                />
-              </div>
-            </div>
-
-          </AccordionContent>
-        </AccordionItem>
-
-        {/* ENERGY CERTIFICATE */}
-        <AccordionItem value="energy" className="border border-gray-200 rounded-lg px-4 hover:border-[#0048BC]/50 transition-colors">
-          <AccordionTrigger className="text-lg font-semibold text-gray-900 hover:no-underline py-4">
-            <div className="flex items-center gap-3">
-              <div className="p-2 bg-yellow-100 rounded-lg">
-                <Zap size={20} className="text-yellow-600" />
-              </div>
-              <span>Energy Certificate</span>
-            </div>
-          </AccordionTrigger>
-
-          <AccordionContent className="pt-4 pb-6">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-              <div>
-                <Label className="text-sm font-medium text-gray-700 mb-2 block">Energy Certificate Available</Label>
-                <Input
-                  placeholder="Yes / No"
-                  value={form.energy_certificate_available || ""}
-                  onChange={(e) => setValue("energy_certificate_available", e.target.value)}
-                  className="border-gray-300 focus:border-[#0048BC] focus:ring-[#0048BC]/20"
-                />
-              </div>
-
-              <div>
-                <Label className="text-sm font-medium text-gray-700 mb-2 block">Energy Class</Label>
-                <Input
-                  placeholder="A, B, C, D, E, F, G"
-                  value={form.energy_class || ""}
-                  onChange={(e) => setValue("energy_class", e.target.value)}
-                  className="border-gray-300 focus:border-[#0048BC] focus:ring-[#0048BC]/20"
-                />
-              </div>
-
-              <div>
-                <Label className="text-sm font-medium text-gray-700 mb-2 block">Certificate Issued At</Label>
-                <Input
-                  type="date"
-                  value={form.certificate_issued_at || ""}
-                  onChange={(e) => setValue("certificate_issued_at", e.target.value)}
-                  className="border-gray-300 focus:border-[#0048BC] focus:ring-[#0048BC]/20"
-                />
-              </div>
-
-              <div>
-                <Label className="text-sm font-medium text-gray-700 mb-2 block">Certificate Expires At</Label>
-                <Input
-                  type="date"
-                  value={form.certificate_expires_at || ""}
-                  onChange={(e) => setValue("certificate_expires_at", e.target.value)}
-                  className="border-gray-300 focus:border-[#0048BC] focus:ring-[#0048BC]/20"
-                />
-              </div>
-
-              <div>
-                <Label className="text-sm font-medium text-gray-700 mb-2 block">Heating Type</Label>
-                <Input
-                  placeholder="Electric, Gas, Solar..."
-                  value={form.heating_type || ""}
-                  onChange={(e) => setValue("heating_type", e.target.value)}
-                  className="border-gray-300 focus:border-[#0048BC] focus:ring-[#0048BC]/20"
-                />
-              </div>
-
-              <div>
-                <Label className="text-sm font-medium text-gray-700 mb-2 block">Energy Consumption Index</Label>
-                <Input
-                  placeholder="kWh/m² per year"
-                  value={form.energy_consumption_index || ""}
-                  onChange={(e) => setValue("energy_consumption_index", e.target.value)}
-                  className="border-gray-300 focus:border-[#0048BC] focus:ring-[#0048BC]/20"
-                />
-              </div>
-
-              <div className="md:col-span-2">
-                <Label className="text-sm font-medium text-gray-700 mb-2 block">Main Energy Source</Label>
-                <Input
-                  placeholder="Electricity, Gas, Solar..."
-                  value={form.main_energy_source || ""}
-                  onChange={(e) => setValue("main_energy_source", e.target.value)}
-                  className="border-gray-300 focus:border-[#0048BC] focus:ring-[#0048BC]/20"
-                />
-              </div>
-            </div>
-
-          </AccordionContent>
-        </AccordionItem>
-
-        {/* AGENT INFORMATION */}
-        <AccordionItem value="agent" className="border border-gray-200 rounded-lg px-4 hover:border-[#0048BC]/50 transition-colors">
-          <AccordionTrigger className="text-lg font-semibold text-gray-900 hover:no-underline py-4">
-            <div className="flex items-center gap-3">
-              <div className="p-2 bg-indigo-100 rounded-lg">
-                <User size={20} className="text-indigo-600" />
-              </div>
-              <span>Agent Information</span>
-            </div>
-          </AccordionTrigger>
-
-          <AccordionContent className="pt-4 pb-6">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-              <div>
-                <Label className="text-sm font-medium text-gray-700 mb-2 block">Agent Name</Label>
-                <Input
-                  value={form.agent_name || ""}
-                  onChange={(e) => setValue("agent_name", e.target.value)}
-                  className="border-gray-300 focus:border-[#0048BC] focus:ring-[#0048BC]/20"
-                  placeholder="John Doe"
-                />
-              </div>
-
-              <div>
-                <Label className="text-sm font-medium text-gray-700 mb-2 block">Agent Phone</Label>
-                <Input
-                  value={form.agent_phone || ""}
-                  onChange={(e) => setValue("agent_phone", e.target.value)}
-                  className="border-gray-300 focus:border-[#0048BC] focus:ring-[#0048BC]/20"
-                  placeholder="+1 234 567 8900"
-                />
-              </div>
-
-              <div>
-                <Label className="text-sm font-medium text-gray-700 mb-2 block">Agent Email</Label>
-                <Input
-                  type="email"
-                  value={form.agent_email || ""}
-                  onChange={(e) => setValue("agent_email", e.target.value)}
-                  className="border-gray-300 focus:border-[#0048BC] focus:ring-[#0048BC]/20"
-                  placeholder="agent@example.com"
-                />
-              </div>
-
-              <div>
-                <Label className="text-sm font-medium text-gray-700 mb-2 block">Agent Photo URL</Label>
-                <Input
-                  value={form.agent_photo_url || ""}
-                  onChange={(e) => setValue("agent_photo_url", e.target.value)}
-                  className="border-gray-300 focus:border-[#0048BC] focus:ring-[#0048BC]/20"
-                  placeholder="https://..."
-                />
-              </div>
-
-              <div className="md:col-span-2">
-                <Label className="text-sm font-medium text-gray-700 mb-2 block">Agent Address</Label>
-                <Input
-                  value={form.agent_address || ""}
-                  onChange={(e) => setValue("agent_address", e.target.value)}
-                  className="border-gray-300 focus:border-[#0048BC] focus:ring-[#0048BC]/20"
-                  placeholder="123 Main St, City, Country"
-                />
-              </div>
-            </div>
-
-          </AccordionContent>
-        </AccordionItem>
-
-        {/* MAIN FEATURES (TAGS) */}
-        <AccordionItem value="features" className="border border-gray-200 rounded-lg px-4 hover:border-[#0048BC]/50 transition-colors">
-          <AccordionTrigger className="text-lg font-semibold text-gray-900 hover:no-underline py-4">
-            <div className="flex items-center gap-3">
-              <div className="p-2 bg-pink-100 rounded-lg">
-                <Plus size={20} className="text-pink-600" />
-              </div>
-              <span>Main Features</span>
-            </div>
-          </AccordionTrigger>
-          <AccordionContent className="pt-4 pb-6">
-            <div className="space-y-4">
-              <div>
-                <Label className="text-sm font-medium text-gray-700 mb-2 block">Add Feature</Label>
-                <Input
-                  placeholder="Type a feature and press Enter to add"
-                  className="border-gray-300 focus:border-[#0048BC] focus:ring-[#0048BC]/20"
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter") {
-                      e.preventDefault();
-                      const value = e.currentTarget.value.trim();
-                      if (value.length > 0) {
-                        setValue(
-                          "main_features",
-                          [...(form.main_features || []), value]
-                        );
-                        e.currentTarget.value = "";
-                      }
-                    }
-                  }}
-                />
-              </div>
-
-              <div className="flex flex-wrap gap-2">
-                {(form.main_features || []).map((feature: string, idx: number) => (
-                  <div
-                    key={idx}
-                    className="flex items-center gap-2 bg-gradient-to-r from-[#0048BC]/10 to-[#0066FF]/10 border border-[#0048BC]/20 px-4 py-2 rounded-full text-sm font-medium text-[#0048BC]"
-                  >
-                    {feature}
-                    <button
-                      type="button"
-                      className="text-red-500 hover:text-red-700 hover:bg-red-50 rounded-full p-0.5 transition"
-                      onClick={() => {
-                        const updated = (form.main_features || []).filter(
-                          (_: any, i: number) => i !== idx
-                        );
-                        setValue("main_features", updated);
-                      }}
-                    >
-                      ✕
-                    </button>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-          </AccordionContent>
-        </AccordionItem>
-
-        {/* IMAGES */}
-        <AccordionItem value="images" className="border border-gray-200 rounded-lg px-4 hover:border-[#0048BC]/50 transition-colors">
-          <AccordionTrigger className="text-lg font-semibold text-gray-900 hover:no-underline py-4">
-            <div className="flex items-center gap-3">
-              <div className="p-2 bg-cyan-100 rounded-lg">
-                <ImageIcon size={20} className="text-cyan-600" />
-              </div>
-              <span>Photos</span>
-            </div>
-          </AccordionTrigger>
-
-          <AccordionContent className="pt-4 pb-6">
-            <ImageUploader
-              images={images}
-              setImages={setImages}
-              propertyId={createdId || "temp"}
-            />
-            {createdId && !isEdit && (
-              <Button
-                type="button"
-                className="w-full bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 text-white font-semibold py-3 shadow-md hover:shadow-lg transition-all duration-200 mt-4"
-                onClick={async () => {
-                  await updatePropertyImages(createdId, images);
-                  router.push("/dashboard/properties");
-                }}
-              >
-                <CheckCircle2 size={18} className="mr-2 inline" />
-                Finish & Save Photos
-              </Button>
-            )}
-            {isEdit && (
-              <Button
-                type="button"
-                className="w-full bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 text-white font-semibold py-3 shadow-md hover:shadow-lg transition-all duration-200 mt-4"
-                onClick={async () => {
-                  if (images.length > 0) {
-                    await updatePropertyImages(propertyId!, images);
-                  }
-                  router.push("/dashboard/properties");
-                }}
-              >
-                <CheckCircle2 size={18} className="mr-2 inline" />
-                Update Photos
-              </Button>
-            )}
-          </AccordionContent>
-        </AccordionItem>
-
-      </Accordion>
-
-      <div className="pt-6 border-t border-gray-200 mt-6">
-        <Button 
-          type="submit" 
-          className="w-full bg-gradient-to-r from-[#0048BC] to-[#0066FF] hover:from-[#003A99] hover:to-[#0048BC] text-white font-semibold py-6 text-lg shadow-lg hover:shadow-xl transition-all duration-200"
-        >
-          <CheckCircle2 size={20} className="mr-2" />
-          {isEdit ? "Update Property" : "Create Property"}
-        </Button>
+    <form onSubmit={handleSubmit} className="min-h-screen bg-white p-6 pb-20">
+      
+      {/* --- STICKY HEADER --- */}
+      <div className="flex items-center justify-between py-4 px-1 mb-6 border-b border-gray-100 sticky top-0 bg-white z-10 shadow-sm">
+        <div>
+           <h1 className="text-2xl font-bold text-gray-800">
+             {isEdit ? "Edit Property" : "New Property"}
+           </h1>
+           <p className="text-xs text-gray-500 mt-1">
+             {formData.reference ? `Ref: ${formData.reference}` : "Fill in the details"}
+           </p>
+        </div>
+        <div className="flex items-center gap-3">
+          <Button type="button" variant="ghost" onClick={() => router.back()}>Cancel</Button>
+          <Button type="submit" disabled={loading} className="bg-[#0048BC] hover:bg-[#003895] text-white">
+            {loading ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Save className="w-4 h-4 mr-2" />}
+            Save Object
+          </Button>
+        </div>
       </div>
 
+      {/* --- GRID LAYOUT --- */}
+      <div className="grid grid-cols-1 xl:grid-cols-12 gap-10">
+        
+        {/* === COLUMNA IZQUIERDA (60%) === */}
+        <div className="xl:col-span-7 space-y-6">
+          
+          {/* 1. MASTER DATA */}
+          <FormSection title="Master Data">
+            <FormRow label="Reference">
+              <Input name="reference" value={formData.reference} onChange={handleChange} className="bg-gray-50 font-mono" placeholder="REF-001" />
+            </FormRow>
+            
+            <FormRow label="Headline*">
+              <Input name="title" value={formData.title} onChange={handleChange} className="bg-gray-50 font-bold" placeholder="E.g. Luxury Villa in Marbella" required />
+            </FormRow>
+
+            <FormRow label="Type / Status">
+              <div className="flex gap-2">
+                 <Select value={formData.property_type} onValueChange={(v) => handleSelectChange("property_type", v)}>
+                  <SelectTrigger className="bg-gray-50"><SelectValue placeholder="Type" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="apartment">Apartment</SelectItem>
+                    <SelectItem value="house">House</SelectItem>
+                    <SelectItem value="villa">Villa</SelectItem>
+                    <SelectItem value="penthouse">Penthouse</SelectItem>
+                    <SelectItem value="land">Land</SelectItem>
+                  </SelectContent>
+                </Select>
+
+                <Select value={formData.status} onValueChange={(v) => handleSelectChange("status", v)}>
+                  <SelectTrigger className="bg-gray-50"><SelectValue placeholder="Status" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="available">Available</SelectItem>
+                    <SelectItem value="reserved">Reserved</SelectItem>
+                    <SelectItem value="sold">Sold</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </FormRow>
+            
+            <FormRow label="Availability">
+               <Input name="availability" value={formData.availability} onChange={handleChange} className="bg-gray-50" placeholder="e.g. Upon agreement" />
+            </FormRow>
+
+            <FormRow label="Description">
+              <Textarea 
+                name="description" 
+                value={formData.description} 
+                onChange={handleChange} 
+                rows={6} 
+                className="bg-gray-50 resize-none" 
+                placeholder="Full description..." 
+              />
+            </FormRow>
+          </FormSection>
+
+          {/* 2. ADDRESS & BUILDING */}
+          <FormSection title="Location & Building">
+            <FormRow label="Address">
+               <Input name="address" value={formData.address} onChange={handleChange} className="bg-gray-50" placeholder="Street name and number" />
+            </FormRow>
+            
+            <FormRow label="City / Zip">
+              <div className="flex gap-2">
+                <Input name="city" value={formData.city} onChange={handleChange} className="bg-gray-50 flex-1" placeholder="City" />
+                <Input name="zip_code" value={formData.zip_code} onChange={handleChange} className="bg-gray-50 w-28" placeholder="Zip" />
+              </div>
+            </FormRow>
+
+            <FormRow label="Views / Orient.">
+              <div className="flex gap-2">
+                <Input name="views" value={formData.views} onChange={handleChange} className="bg-gray-50 flex-1" placeholder="e.g. Sea View" />
+                <Input name="orientation" value={formData.orientation} onChange={handleChange} className="bg-gray-50 flex-1" placeholder="e.g. South" />
+              </div>
+            </FormRow>
+            
+            <div className="grid grid-cols-2 gap-4 mt-4">
+              <FormRow label="Year Built">
+                <Input type="number" name="year_built" value={formData.year_built} onChange={handleChange} className="bg-gray-50" />
+              </FormRow>
+              <FormRow label="Renovated">
+                 <Input type="number" name="last_renovation" value={formData.last_renovation} onChange={handleChange} className="bg-gray-50" placeholder="Year" />
+              </FormRow>
+            </div>
+
+            <FormRow label="Condition">
+               <div className="flex gap-2">
+                 <Input name="condition" value={formData.condition} onChange={handleChange} className="bg-gray-50" placeholder="e.g. Good" />
+                 <Input name="equipment_quality" value={formData.equipment_quality} onChange={handleChange} className="bg-gray-50" placeholder="Quality (High/Std)" />
+               </div>
+            </FormRow>
+            
+            <FormRow label="Floor Info">
+               <div className="flex gap-2">
+                 <Input name="floors" value={formData.floors} onChange={handleChange} className="bg-gray-50" placeholder="Total Floors" />
+                 <Input name="floor_block" value={formData.floor_block} onChange={handleChange} className="bg-gray-50" placeholder="Floor/Block" />
+               </div>
+            </FormRow>
+          </FormSection>
+
+          {/* 3. ENERGY CERTIFICATE */}
+          <FormSection title="Energy Efficiency">
+            <FormRow label="Certified?">
+               <Select value={formData.energy_certificate_available} onValueChange={(v) => handleSelectChange("energy_certificate_available", v)}>
+                  <SelectTrigger className="bg-gray-50 w-full"><SelectValue placeholder="Select" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="yes">Yes</SelectItem>
+                    <SelectItem value="no">No</SelectItem>
+                    <SelectItem value="in_process">In Process</SelectItem>
+                  </SelectContent>
+                </Select>
+            </FormRow>
+
+            {formData.energy_certificate_available === "yes" && (
+              <>
+                <FormRow label="Class / Index">
+                  <div className="flex gap-2">
+                    <Input name="energy_class" value={formData.energy_class} onChange={handleChange} className="bg-gray-50 w-20 text-center font-bold" placeholder="A" />
+                    <Input name="energy_consumption_index" value={formData.energy_consumption_index} onChange={handleChange} className="bg-gray-50 flex-1" placeholder="kWh/m²a" />
+                  </div>
+                </FormRow>
+                <FormRow label="Heating / Src">
+                  <div className="flex gap-2">
+                     <Input name="heating_type" value={formData.heating_type} onChange={handleChange} className="bg-gray-50" placeholder="Type (Underfloor)" />
+                     <Input name="main_energy_source" value={formData.main_energy_source} onChange={handleChange} className="bg-gray-50" placeholder="Source (Gas/Solar)" />
+                  </div>
+                </FormRow>
+                 <FormRow label="Valid Dates">
+                  <div className="flex gap-2">
+                     <Input type="date" name="certificate_issued_at" value={formData.certificate_issued_at} onChange={handleChange} className="bg-gray-50" />
+                     <span className="self-center text-gray-400">-</span>
+                     <Input type="date" name="certificate_expires_at" value={formData.certificate_expires_at} onChange={handleChange} className="bg-gray-50" />
+                  </div>
+                </FormRow>
+              </>
+            )}
+          </FormSection>
+
+          {/* 4. IMAGES */}
+          <FormSection title="Media Gallery">
+            <div className="bg-gray-50 border border-dashed border-gray-300 rounded-lg p-6">
+              <ImageUploader 
+                value={formData.images || []}
+                onChange={handleImagesChange}
+                onRemove={(url) => {
+                  setFormData((prev:any) => ({
+                    ...prev,
+                    images: prev.images.filter((img: string) => img !== url)
+                  }));
+                }}
+                propertyId={propertyId}
+              />
+            </div>
+          </FormSection>
+
+        </div>
+
+        {/* === COLUMNA DERECHA (40%) === */}
+        <div className="xl:col-span-5 space-y-6">
+          
+          {/* 5. PRICE & FINANCIALS */}
+          <div className="bg-blue-50/50 p-6 rounded-xl border border-blue-100">
+             <h3 className="text-[#0048BC] font-bold mb-4 uppercase text-sm tracking-wide">Financial Details</h3>
+             
+             <FormRow label="Price (€)">
+                <Input type="number" name="price" value={formData.price} onChange={handleChange} className="bg-white border-blue-200 text-lg font-bold text-[#0048BC]" placeholder="0" />
+             </FormRow>
+
+             <FormRow label="Community">
+                <div className="relative">
+                  <Input type="number" name="community_fee" value={formData.community_fee} onChange={handleChange} className="bg-white" placeholder="0" />
+                  <span className="absolute right-3 top-2 text-xs text-gray-400">/month</span>
+                </div>
+             </FormRow>
+
+             <FormRow label="IBI (Tax)">
+                <div className="relative">
+                  <Input type="number" name="property_tax" value={formData.property_tax} onChange={handleChange} className="bg-white" placeholder="0" />
+                  <span className="absolute right-3 top-2 text-xs text-gray-400">/year</span>
+                </div>
+             </FormRow>
+
+             <FormRow label="Garbage">
+                <div className="relative">
+                   <Input type="number" name="garbage_fee" value={formData.garbage_fee} onChange={handleChange} className="bg-white" placeholder="0" />
+                   <span className="absolute right-3 top-2 text-xs text-gray-400">/year</span>
+                </div>
+             </FormRow>
+          </div>
+
+          {/* 6. AREAS & ROOMS */}
+          <FormSection title="Areas & Specs">
+             <FormRow label="Bedrooms">
+                <Input type="number" name="bedrooms" value={formData.bedrooms} onChange={handleChange} className="bg-gray-50" />
+             </FormRow>
+             <FormRow label="Bathrooms">
+                <Input type="number" name="bathrooms" value={formData.bathrooms} onChange={handleChange} className="bg-gray-50" />
+             </FormRow>
+             
+             <div className="border-t border-gray-100 my-4 pt-4"></div>
+
+             <FormRow label="Usable Area">
+                <div className="relative">
+                  <Input type="number" name="usable_area" value={formData.usable_area} onChange={handleChange} className="bg-gray-50 pr-8" />
+                  <span className="absolute right-3 top-2 text-gray-400 text-xs">m²</span>
+                </div>
+             </FormRow>
+
+             <FormRow label="Built Area">
+                <div className="relative">
+                  <Input type="number" name="built_area" value={formData.built_area} onChange={handleChange} className="bg-gray-50 pr-8" />
+                  <span className="absolute right-3 top-2 text-gray-400 text-xs">m²</span>
+                </div>
+             </FormRow>
+
+             <FormRow label="Terrace">
+                <div className="relative">
+                  <Input type="number" name="terrace_m2" value={formData.terrace_m2} onChange={handleChange} className="bg-gray-50 pr-8" />
+                  <span className="absolute right-3 top-2 text-gray-400 text-xs">m²</span>
+                </div>
+             </FormRow>
+
+             <FormRow label="Garden">
+                <div className="relative">
+                   <Input type="number" name="garden_m2" value={formData.garden_m2} onChange={handleChange} className="bg-gray-50 pr-8" />
+                   <span className="absolute right-3 top-2 text-gray-400 text-xs">m²</span>
+                </div>
+             </FormRow>
+
+             <FormRow label="Parking">
+                <Input type="number" name="parking_spaces" value={formData.parking_spaces} onChange={handleChange} className="bg-gray-50" placeholder="Slots" />
+             </FormRow>
+          </FormSection>
+
+          {/* 7. AGENT */}
+          <FormSection title="Agent Assignment">
+             <FormRow label="Name">
+                <Input name="agent_name" value={formData.agent_name} onChange={handleChange} className="bg-gray-50" placeholder="Agent Name" />
+             </FormRow>
+             <FormRow label="Phone">
+                <Input name="agent_phone" value={formData.agent_phone} onChange={handleChange} className="bg-gray-50" placeholder="+34..." />
+             </FormRow>
+             <FormRow label="Email">
+                <Input name="agent_email" value={formData.agent_email} onChange={handleChange} className="bg-gray-50" placeholder="email@..." />
+             </FormRow>
+             <FormRow label="Photo URL">
+                <Input name="agent_photo_url" value={formData.agent_photo_url} onChange={handleChange} className="bg-gray-50 text-xs" placeholder="https://..." />
+             </FormRow>
+          </FormSection>
+
+          {/* 8. FEATURES TAGS */}
+          <FormSection title="Features">
+            <div className="flex gap-2 mb-3">
+              <Input 
+                value={featureInput} 
+                onChange={(e) => setFeatureInput(e.target.value)}
+                onKeyDown={addFeature}
+                className="bg-gray-50" 
+                placeholder="Type feature + Enter" 
+              />
+              <Button type="button" size="icon" variant="outline" onClick={() => {
+                if(featureInput.trim()) {
+                  setFormData((prev: any) => ({ ...prev, main_features: [...(prev.main_features || []), featureInput.trim()] }));
+                  setFeatureInput("");
+                }
+              }}>
+                <Plus size={16} />
+              </Button>
+            </div>
+            
+            <div className="flex flex-wrap gap-2">
+              {(formData.main_features || []).map((feature: string, idx: number) => (
+                <span key={idx} className="inline-flex items-center px-2.5 py-1 rounded-md text-xs font-medium bg-blue-50 text-blue-700 border border-blue-100">
+                  {feature}
+                  <button type="button" onClick={() => removeFeature(idx)} className="ml-1.5 text-blue-400 hover:text-blue-600">
+                    <X size={12} />
+                  </button>
+                </span>
+              ))}
+            </div>
+          </FormSection>
+
+        </div>
+      </div>
     </form>
   );
 }
