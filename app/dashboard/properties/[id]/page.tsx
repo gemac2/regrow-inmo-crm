@@ -1,6 +1,5 @@
-import { getProperty } from "@/app/dashboard/properties/actions"; // Ajusta la ruta si es necesario
+import { getProperty } from "@/app/dashboard/properties/actions";
 import { addToHistory } from "@/app/dashboard/recent/actions";
-import Image from "next/image";
 import Link from "next/link";
 import { 
   MapPin, 
@@ -10,11 +9,15 @@ import {
   Bath, 
   Maximize, 
   Home,
-  User
+  User,
+  Pencil // Agregué el icono que faltaba para el botón de editar
 } from "lucide-react";
-// Si creamos el componente MatchingContacts antes, lo importamos. 
-// Si no, puedes comentar esta línea.
-import MatchingContacts from "@/components/dashboard/MatchingContacts"; 
+
+// --- IMPORTANTE: Importamos el componente cliente de la galería ---
+import PropertyGallery from "@/components/properties/PropertyGallery"; 
+
+// Si tienes este componente, descoméntalo. Si no, déjalo comentado.
+// import MatchingContacts from "@/components/dashboard/MatchingContacts"; 
 
 export default async function PropertyDetailsPage({ params }: any) {
   // Next.js 15 requiere await en params
@@ -32,6 +35,7 @@ export default async function PropertyDetailsPage({ params }: any) {
     );
   }
 
+  // Registrar visita en historial
   addToHistory({ property_id: id }).catch(console.error);
 
   // Formateadores
@@ -74,12 +78,12 @@ export default async function PropertyDetailsPage({ params }: any) {
             >
               <Download size={16} /> Download PDF
             </a>
-            {/* Botón de Editar opcional */}
+            
             <Link
                href={`/dashboard/properties/${id}/edit`}
-               className="px-4 py-2 bg-[#0048BC] text-white rounded-lg shadow hover:bg-[#003895] transition text-sm font-medium"
+               className="flex items-center gap-2 px-4 py-2 bg-[#0048BC] text-white rounded-lg shadow hover:bg-[#003895] transition text-sm font-medium"
             >
-               Edit Property
+               <Pencil size={16} /> Edit Property
             </Link>
           </div>
         </div>
@@ -91,45 +95,9 @@ export default async function PropertyDetailsPage({ params }: any) {
         {/* COLUMNA IZQUIERDA (Contenido Principal) */}
         <div className="xl:col-span-2 space-y-8">
           
-          {/* 1. GALERÍA DE IMÁGENES */}
-          {property.images && property.images.length > 0 ? (
-            <div className="grid grid-cols-4 gap-2 h-[400px]">
-              {/* Imagen Principal (Grande) */}
-              <div className="col-span-3 md:col-span-3 h-full relative rounded-l-xl overflow-hidden group">
-                <Image
-                  src={property.images[0]}
-                  alt="Main property image"
-                  fill
-                  className="object-cover transition-transform duration-700 group-hover:scale-105"
-                  priority
-                />
-              </div>
-              {/* Miniaturas Verticales */}
-              <div className="col-span-1 flex flex-col gap-2 h-full">
-                {property.images.slice(1, 4).map((url: string, idx: number) => (
-                  <div key={idx} className="relative flex-1 rounded-r-xl (first:rounded-tr-xl last:rounded-br-xl) overflow-hidden border border-gray-100">
-                     <Image
-                      src={url}
-                      alt={`Gallery ${idx}`}
-                      fill
-                      className="object-cover hover:opacity-80 transition"
-                    />
-                  </div>
-                ))}
-                 {/* Si hay más de 4 imágenes, mostrar contador */}
-                 {property.images.length > 4 && (
-                    <div className="relative flex-1 bg-gray-100 rounded-br-xl flex items-center justify-center text-gray-500 font-medium text-sm hover:bg-gray-200 cursor-pointer">
-                       +{property.images.length - 4} more
-                    </div>
-                 )}
-              </div>
-            </div>
-          ) : (
-            <div className="h-64 bg-gray-100 rounded-xl flex items-center justify-center text-gray-400">
-               <Home size={48} className="opacity-20" />
-               <span className="ml-2">No images available</span>
-            </div>
-          )}
+          {/* 1. GALERÍA DE IMÁGENES (REEMPLAZADO) */}
+          {/* Aquí inyectamos el componente interactivo que maneja el Lightbox */}
+          <PropertyGallery images={property.images || []} />
 
           {/* 2. DATOS CLAVE (Resumen rápido) */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4 p-4 bg-gray-50 rounded-xl border border-gray-100">
@@ -213,8 +181,7 @@ export default async function PropertyDetailsPage({ params }: any) {
         <div className="space-y-6">
           
           {/* WIDGET 1: MATCHING (Clientes interesados) */}
-          {/* Si tienes el componente MatchingContacts, úsalo aquí */}
-          <MatchingContacts propertyId={id} />
+          {/* <MatchingContacts propertyId={id} /> */}
 
           {/* WIDGET 2: AGENT CARD */}
           <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
