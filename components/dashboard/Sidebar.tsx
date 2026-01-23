@@ -4,16 +4,18 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { 
-  Home, Building, Users, Calendar, CheckSquare, Settings, HelpCircle, LogOut, Clock 
+  Home, Building, Users, Calendar, CheckSquare, Settings, HelpCircle, LogOut, Clock,
+  Mail // <--- Importamos el icono de Mail
 } from "lucide-react";
 import { logout } from "@/app/auth/logout/action"; 
-import { getRecentlyViewed } from "@/app/dashboard/recent/actions"; // <--- Importamos la acción
+import { getRecentlyViewed } from "@/app/dashboard/recent/actions";
 
-// ... (mainMenu y systemMenu se quedan igual)
+// --- MENÚ PRINCIPAL ACTUALIZADO ---
 const mainMenu = [
   { name: "Dashboard", href: "/dashboard", icon: Home, exact: true },
   { name: "Properties", href: "/dashboard/properties", icon: Building },
   { name: "Contacts", href: "/dashboard/contacts", icon: Users },
+  { name: "Mailbox", href: "/dashboard/mailbox", icon: Mail }, // <--- NUEVA OPCIÓN AGREGADA
   { name: "Calendar", href: "/dashboard/calendar", icon: Calendar },
   { name: "Tasks", href: "/dashboard/tasks", icon: CheckSquare },
 ];
@@ -25,7 +27,7 @@ const systemMenu = [
 
 export default function Sidebar() {
   const pathname = usePathname();
-  const [recentlyViewed, setRecentlyViewed] = useState<any[]>([]); // Estado dinámico
+  const [recentlyViewed, setRecentlyViewed] = useState<any[]>([]);
 
   // EFECTO: Cargar historial cada vez que cambiamos de ruta
   useEffect(() => {
@@ -40,7 +42,7 @@ export default function Sidebar() {
     }, 500);
 
     return () => clearTimeout(timer);
-  }, [pathname]); // Se ejecuta al cambiar de URL
+  }, [pathname]);
 
   const isActive = (href: string, exact: boolean = false) => {
     if (!pathname) return false;

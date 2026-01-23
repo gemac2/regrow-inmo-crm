@@ -7,7 +7,10 @@ import { revalidatePath } from "next/cache";
 export async function getProperties(searchParams?: { query?: string; status?: string }) {
   const supabase = await createSupabaseServer();
   
-  let query = supabase
+  // 1. Log para ver si llegan los parámetros
+  console.log("🔍 Buscando propiedades con params:", searchParams);
+
+  let queryBuilder = supabase
     .from("properties")
     .select("*")
     .order("created_at", { ascending: false });
@@ -15,22 +18,25 @@ export async function getProperties(searchParams?: { query?: string; status?: st
   // Filtro de Texto
   if (searchParams?.query) {
     const q = searchParams.query;
-    query = query.or(`title.ilike.%${q}%,reference.ilike.%${q}%,city.ilike.%${q}%`);
+    queryBuilder = queryBuilder.or(`title.ilike.%${q}%,reference.ilike.%${q}%,city.ilike.%${q}%`);
   }
 
   // Filtro de Estado
   if (searchParams?.status && searchParams.status !== "all") {
-    query = query.eq("status", searchParams.status);
+    queryBuilder = queryBuilder.eq("status", searchParams.status);
   }
 
-  const { data, error } = await query;
+  const { data, error } = await queryBuilder;
 
   if (error) {
-    console.error("Error fetching properties:", error);
+    console.error("❌ Error Supabase:", error.message);
     return [];
   }
 
-  return data;
+  // 2. Log para ver cuántos registros devolvió la base de datos
+  console.log(`✅ Resultados encontrados: ${data?.length || 0}`);
+
+  return data || [];
 }
 
 // 2. OBTENER UNA PROPIEDAD

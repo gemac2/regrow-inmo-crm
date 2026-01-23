@@ -19,6 +19,18 @@ interface PropertyFormProps {
   isEdit?: boolean;
 }
 
+// --- CONSTANTES ---
+const PROPERTY_STATUSES = [
+  { value: "cold_lead", label: "Cold Lead" },     // Captación fría
+  { value: "prospecting", label: "Prospecting" }, // En captación
+  { value: "preparing", label: "Preparing" },     // Preparación
+  { value: "active", label: "Active" },           // Activa
+  { value: "reserved", label: "Reserved" },       // Reservada
+  { value: "sold", label: "Sold" },               // Vendida
+  { value: "archived", label: "Archived" },       // Archivada
+  { value: "cancelled", label: "Cancelled" },     // Cancelada
+];
+
 // Helper para filas de formulario (Label izquierda - Input derecha)
 const FormRow = ({ label, children, className = "" }: { label: string, children: React.ReactNode, className?: string }) => (
   <div className={`grid grid-cols-12 gap-4 items-center mb-3 ${className}`}>
@@ -49,7 +61,7 @@ export default function PropertyForm({ initialData, propertyId, isEdit = false }
     // Master Data
     reference: "",
     title: "",
-    status: "available",
+    status: "cold_lead", // Default actualizado
     category: "sale",
     property_type: "apartment",
     availability: "Immediate",
@@ -231,12 +243,17 @@ export default function PropertyForm({ initialData, propertyId, isEdit = false }
                   </SelectContent>
                 </Select>
 
+                {/* --- SELECTOR DE ESTADOS ACTUALIZADO --- */}
                 <Select value={formData.status} onValueChange={(v) => handleSelectChange("status", v)}>
-                  <SelectTrigger className="bg-gray-50"><SelectValue placeholder="Status" /></SelectTrigger>
+                  <SelectTrigger className="bg-gray-50 font-medium text-gray-700">
+                    <SelectValue placeholder="Status" />
+                  </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="available">Available</SelectItem>
-                    <SelectItem value="reserved">Reserved</SelectItem>
-                    <SelectItem value="sold">Sold</SelectItem>
+                    {PROPERTY_STATUSES.map((status) => (
+                      <SelectItem key={status.value} value={status.value}>
+                        {status.label}
+                      </SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
               </div>

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useRouter, usePathname } from "next/navigation";
+import { useRouter } from "next/navigation";
 import { supabaseBrowser } from "@/lib/supabase";
 import { User, Settings, LogOut, Bell } from "lucide-react";
 
@@ -12,26 +12,43 @@ interface HeaderProps {
 export default function Header({ onProfileClick }: HeaderProps) {
   const router = useRouter();
   const [user, setUser] = useState<any>(null);
+  const [profile, setProfile] = useState<any>(null); // Estado para el perfil (foto/nombre)
   const [showDropdown, setShowDropdown] = useState(false);
 
   useEffect(() => {
-    loadUser();
-    
-    // Escuchar cambios en la autenticación
+    loadUserAndProfile();
+
+    // Escuchar cambios en la autenticación (Login/Logout)
     const { data: { subscription } } = supabaseBrowser.auth.onAuthStateChange((_event, session) => {
       if (session?.user) {
         setUser(session.user);
+        // Si cambia la sesión, recargamos el perfil también
+        fetchProfile(session.user.id);
       } else {
         setUser(null);
+        setProfile(null);
       }
     });
 
     return () => subscription.unsubscribe();
   }, []);
 
-  const loadUser = async () => {
+  const fetchProfile = async (userId: string) => {
+    const { data } = await supabaseBrowser
+      .from("profiles")
+      .select("*")
+      .eq("id", userId)
+      .single();
+    
+    if (data) setProfile(data);
+  };
+
+  const loadUserAndProfile = async () => {
     const { data: { user } } = await supabaseBrowser.auth.getUser();
-    setUser(user);
+    if (user) {
+      setUser(user);
+      await fetchProfile(user.id);
+    }
   };
 
   const handleLogout = async () => {
@@ -49,43 +66,63 @@ export default function Header({ onProfileClick }: HeaderProps) {
     }
   };
 
+  // Obtener iniciales (Prioridad: Nombre del perfil > Email)
   const getUserInitials = () => {
+    if (profile?.full_name) {
+      return profile.full_name.charAt(0).toUpperCase();
+    }
     if (user?.email) {
       return user.email.charAt(0).toUpperCase();
     }
     return "U";
   };
 
+  // Obtener nombre para mostrar
+  const getDisplayName = () => {
+    return profile?.full_name || user?.email?.split("@")[0] || "User";
+  };
+
   return (
     <header className="h-16 bg-gradient-to-r from-[#0048BC] to-[#0066FF] border-b border-[#003A99] shadow-md flex items-center justify-between px-6 sticky top-0 z-50">
       {/* Logo */}
       <div className="flex items-center gap-4">
-        <h1 className="text-2xl font-bold text-white">Regrow CRM</h1>
+        <h1 className="text-2xl font-bold text-white tracking-tight">Regrow CRM</h1>
       </div>
 
       {/* Right side - Notifications and Profile */}
       <div className="flex items-center gap-4">
-        {/* Notifications Icon (placeholder) */}
+        {/* Notifications Icon */}
         <button className="relative p-2 text-white/90 hover:text-white hover:bg-white/10 rounded-lg transition">
           <Bell size={20} />
-          {/* Badge de notificaciones (opcional) */}
-          {/* <span className="absolute top-0 right-0 w-2 h-2 bg-red-500 rounded-full"></span> */}
         </button>
 
         {/* Profile Dropdown */}
         <div className="relative">
           <button
             onClick={() => setShowDropdown(!showDropdown)}
-            className="flex items-center gap-3 p-2 rounded-lg hover:bg-white/10 transition"
+            className="flex items-center gap-3 p-1.5 rounded-lg hover:bg-white/10 transition group"
           >
-            <div className="w-10 h-10 rounded-full bg-white text-[#0048BC] flex items-center justify-center font-semibold shadow-sm">
-              {getUserInitials()}
+            {/* AVATAR: Imagen o Iniciales */}
+            <div className="w-10 h-10 rounded-full bg-white text-[#0048BC] flex items-center justify-center font-bold shadow-sm overflow-hidden border-2 border-transparent group-hover:border-white/20 transition">
+              {profile?.avatar_url ? (
+                <img 
+                  src={profile.avatar_url} 
+                  alt="Avatar" 
+                  className="w-full h-full object-cover" 
+                />
+              ) : (
+                <span>{getUserInitials()}</span>
+              )}
             </div>
+
+            {/* TEXTO: Nombre y Email */}
             <div className="hidden md:block text-left">
-              <p className="text-sm font-medium text-white">
-                {user?.email?.split("@")[0] || "User"}
+              <p className="text-sm font-medium text-white leading-tight">
+                {getDisplayName()}
               </p>
-              <p className="text-xs text-white/80">{user?.email || ""}</p>
+              <p className="text-[11px] text-white/70 font-light truncate max-w-[120px]">
+                {user?.email || ""}
+              </p>
             </div>
           </button>
 
@@ -96,38 +133,45 @@ export default function Header({ onProfileClick }: HeaderProps) {
                 className="fixed inset-0 z-10"
                 onClick={() => setShowDropdown(false)}
               ></div>
-              <div className="absolute right-0 mt-2 w-56 bg-white rounded-lg shadow-lg border border-gray-200 py-2 z-20">
-                <div className="px-4 py-3 border-b border-gray-200">
-                  <p className="text-sm font-medium text-gray-900">
-                    {user?.email?.split("@")[0] || "Usuario"}
+              <div className="absolute right-0 mt-2 w-64 bg-white rounded-xl shadow-xl border border-gray-200 py-2 z-20 animate-in fade-in zoom-in-95 duration-100">
+                {/* Dropdown Header Info */}
+                <div className="px-4 py-3 border-b border-gray-100 bg-gray-50/50">
+                  <p className="text-sm font-semibold text-gray-900">
+                    {getDisplayName()}
                   </p>
-                  <p className="text-xs text-gray-500 truncate">{user?.email || ""}</p>
+                  <p className="text-xs text-gray-500 truncate mt-0.5">
+                    {user?.email || ""}
+                  </p>
                 </div>
                 
-                <button
-                  onClick={handleProfileClick}
-                  className="w-full flex items-center gap-3 px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition"
-                >
-                  <User size={16} />
-                  My profile
-                </button>
+                <div className="p-1">
+                  <button
+                    onClick={handleProfileClick}
+                    className="w-full flex items-center gap-3 px-3 py-2 text-sm text-gray-700 hover:bg-gray-100 rounded-lg transition"
+                  >
+                    <User size={16} className="text-gray-500" />
+                    My Profile
+                  </button>
+                  
+                  <button
+                    className="w-full flex items-center gap-3 px-3 py-2 text-sm text-gray-700 hover:bg-gray-100 rounded-lg transition"
+                  >
+                    <Settings size={16} className="text-gray-500" />
+                    Settings
+                  </button>
+                </div>
                 
-                <button
-                  className="w-full flex items-center gap-3 px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition"
-                >
-                  <Settings size={16} />
-                  settings
-                </button>
+                <div className="border-t border-gray-100 my-1"></div>
                 
-                <div className="border-t border-gray-200 my-1"></div>
-                
-                <button
-                  onClick={handleLogout}
-                  className="w-full flex items-center gap-3 px-4 py-2 text-sm text-red-600 hover:bg-red-50 transition"
-                >
-                  <LogOut size={16} />
-                  Log out
-                </button>
+                <div className="p-1">
+                  <button
+                    onClick={handleLogout}
+                    className="w-full flex items-center gap-3 px-3 py-2 text-sm text-red-600 hover:bg-red-50 rounded-lg transition"
+                  >
+                    <LogOut size={16} />
+                    Log Out
+                  </button>
+                </div>
               </div>
             </>
           )}

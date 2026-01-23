@@ -102,9 +102,14 @@ export default function PropertiesToolbar({ dataToExport }: { dataToExport: any[
                   defaultValue={searchParams.get("status")?.toString() || "all"}
               >
                   <option value="all">All Status</option>
-                  <option value="available">Available</option>
+                  <option value="cold_lead">Cold Lead</option>
+                  <option value="prospecting">Prospecting</option>
+                  <option value="preparing">Preparing</option>
+                  <option value="active">Active</option>
                   <option value="reserved">Reserved</option>
                   <option value="sold">Sold</option>
+                  <option value="archived">Archived</option>
+                  <option value="cancelled">Cancelled</option>
               </select>
               <Filter className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" size={14} />
           </div>
