@@ -26,6 +26,7 @@
     "date-fns": "^4.1.0",
     "lucide-react": "^0.560.0",
     "next": "^16.1.4",
+    "openai": "^6.16.0",
     "puppeteer": "^24.35.0",
     "react": "19.2.1",
     "react-day-picker": "^9.12.0",
