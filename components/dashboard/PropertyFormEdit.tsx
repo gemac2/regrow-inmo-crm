@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { getProperty } from "@/app/properties/actions";
+import { getProperty } from "@/app/dashboard/properties/actions";
 import PropertyForm from "@/components/property-form/PropertyForm";
 
 interface PropertyFormEditProps {
