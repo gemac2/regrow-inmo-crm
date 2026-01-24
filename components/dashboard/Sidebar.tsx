@@ -73,7 +73,7 @@ export default function Sidebar() {
       {/* HEADER */}
       <div className="h-16 flex items-center px-6 border-b border-gray-100 shrink-0">
         <Link href="/dashboard" className="font-bold text-xl text-[#0048BC]">
-          Regrow<span className="text-gray-400">.CRM</span>
+          TheWay<span className="text-gray-400">.CRM</span>
         </Link>
       </div>
 

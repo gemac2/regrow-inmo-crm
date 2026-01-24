@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { supabaseBrowser } from "@/lib/supabase";
 import { User, Settings, LogOut, Bell } from "lucide-react";
+import { Logo } from "@/components/ui/Logo";
 
 interface HeaderProps {
   onProfileClick?: () => void;
@@ -86,7 +87,7 @@ export default function Header({ onProfileClick }: HeaderProps) {
     <header className="h-16 bg-gradient-to-r from-[#0048BC] to-[#0066FF] border-b border-[#003A99] shadow-md flex items-center justify-between px-6 sticky top-0 z-50">
       {/* Logo */}
       <div className="flex items-center gap-4">
-        <h1 className="text-2xl font-bold text-white tracking-tight">Regrow CRM</h1>
+            <Logo lightMode={true} />
       </div>
 
       {/* Right side - Notifications and Profile */}
