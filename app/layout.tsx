@@ -14,8 +14,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Regrow CRM", // <--- Actualizado para que se vea pro
-  description: "Real Estate CRM Application",
+  title: "TheWayCRM | Real Estate Management", // <--- Actualizado para que se vea pro
+  description: "The professional CRM for real estate agents.",
 };
 
 export default function RootLayout({
