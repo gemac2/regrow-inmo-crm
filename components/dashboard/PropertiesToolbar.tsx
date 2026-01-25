@@ -1,11 +1,11 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useRouter, useSearchParams, usePathname } from "next/navigation";
-import { Search, Filter, Download, Plus, FileCode, Loader2, X } from "lucide-react";
+import { Search, Filter, Download, Plus, FileCode, Loader2, X, User } from "lucide-react";
 import Link from "next/link";
-// Importamos la acción de lectura de HTML (asegúrate de haber creado este archivo en el paso anterior)
-import { importFromHtml } from "@/app/dashboard/properties/html-import-action"; 
+import { importFromHtml } from "@/app/dashboard/properties/html-import-action";
+import { createClient } from "@/utils/supabase/client";
 
 export default function PropertiesToolbar({ dataToExport }: { dataToExport: any[] }) {
   const searchParams = useSearchParams();
@@ -15,9 +15,33 @@ export default function PropertiesToolbar({ dataToExport }: { dataToExport: any[
 
   // Estados para el Modal de Importación (HTML)
   const [isImportModalOpen, setIsImportModalOpen] = useState(false);
-  const [htmlContent, setHtmlContent] = useState(""); // Guardamos el código fuente pegado
+  const [htmlContent, setHtmlContent] = useState("");
   const [isImporting, setIsImporting] = useState(false);
   const [importError, setImportError] = useState("");
+
+  // Estado para la lista de Agentes
+  const [agentNames, setAgentNames] = useState<string[]>([]);
+
+  // --- 0. CARGAR AGENTES (Al montar el componente) ---
+  useEffect(() => {
+    const fetchUniqueAgents = async () => {
+      const supabase = createClient();
+      const { data } = await supabase
+        .from('properties')
+        .select('agent_name');
+      
+      if (data) {
+        // 2. Mapeamos usando la propiedad correcta
+        const uniqueAgents = Array.from(new Set(
+          data.map(item => item.agent_name).filter((name) => name && name.trim() !== "")
+        ));
+        
+        uniqueAgents.sort();
+        setAgentNames(uniqueAgents as string[]);
+      }
+    };
+    fetchUniqueAgents();
+  }, []);
 
   // --- 1. SEARCH LOGIC ---
   const handleSearch = (term: string) => {
@@ -30,7 +54,7 @@ export default function PropertiesToolbar({ dataToExport }: { dataToExport: any[
     }, 300);
   };
 
-  // --- 2. FILTER LOGIC ---
+  // --- 2. FILTER LOGIC (STATUS) ---
   const handleStatusFilter = (status: string) => {
     const params = new URLSearchParams(searchParams);
     if (status && status !== "all") params.set("status", status);
@@ -38,7 +62,15 @@ export default function PropertiesToolbar({ dataToExport }: { dataToExport: any[
     replace(`${pathname}?${params.toString()}`);
   };
 
-  // --- 3. EXPORT LOGIC ---
+  // --- 3. FILTER LOGIC (AGENTS - NUEVO) ---
+  const handleAgentFilter = (agentId: string) => {
+    const params = new URLSearchParams(searchParams);
+    if (agentId && agentId !== "all") params.set("agent", agentId);
+    else params.delete("agent");
+    replace(`${pathname}?${params.toString()}`);
+  };
+
+  // --- 4. EXPORT LOGIC ---
   const handleExport = () => {
     if (!dataToExport || dataToExport.length === 0) return alert("No data to export");
     const headers = ["Reference", "Title", "Price", "City", "Status", "Bedrooms", "Created At"];
@@ -58,7 +90,7 @@ export default function PropertiesToolbar({ dataToExport }: { dataToExport: any[
     document.body.removeChild(link);
   };
 
-  // --- 4. IMPORT LOGIC (HTML SOURCE CODE) ---
+  // --- 5. IMPORT LOGIC (HTML SOURCE CODE) ---
   const handleImport = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!htmlContent.trim()) return;
@@ -66,13 +98,11 @@ export default function PropertiesToolbar({ dataToExport }: { dataToExport: any[
     setIsImporting(true);
     setImportError("");
 
-    // Llamamos a la acción que procesa el texto HTML
     const result = await importFromHtml(htmlContent);
 
     if (result.success) {
       setIsImportModalOpen(false);
       setHtmlContent("");
-      // Redirigir a editar para revisar los datos extraídos
       push(`/dashboard/properties/${result.id}/edit`);
     } else {
       setImportError(result.error || "Error desconocido al procesar el HTML.");
@@ -82,11 +112,13 @@ export default function PropertiesToolbar({ dataToExport }: { dataToExport: any[
 
   return (
     <>
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6 bg-white p-4 rounded-xl border border-gray-200 shadow-sm">
+      <div className="flex flex-col xl:flex-row justify-between items-start xl:items-center gap-4 mb-6 bg-white p-4 rounded-xl border border-gray-200 shadow-sm">
         
-        {/* LEFT: Search & Filter */}
-        <div className="flex flex-1 items-center gap-3 w-full sm:w-auto">
-          <div className="relative flex-1 sm:max-w-xs">
+        {/* LEFT: Search & Filters Group */}
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full xl:w-auto">
+          
+          {/* SEARCH BAR */}
+          <div className="relative flex-1 sm:min-w-[250px]">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
             <input
               className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-[#0048BC] outline-none"
@@ -95,9 +127,34 @@ export default function PropertiesToolbar({ dataToExport }: { dataToExport: any[
               defaultValue={searchParams.get("query")?.toString()}
             />
           </div>
+
+          {/* --- NUEVO FILTRO DE AGENTES --- */}
           <div className="relative">
               <select 
-                  className="appearance-none pl-3 pr-8 py-2 border border-gray-300 rounded-lg text-sm bg-white focus:ring-2 focus:ring-[#0048BC] outline-none cursor-pointer"
+                  className="w-full sm:w-auto appearance-none pl-9 pr-8 py-2 border border-gray-300 rounded-lg text-sm bg-white focus:ring-2 focus:ring-[#0048BC] outline-none cursor-pointer"
+                  onChange={(e) => handleAgentFilter(e.target.value)}
+                  // El value por defecto viene de la URL (searchParams)
+                  defaultValue={searchParams.get("agent")?.toString() || "all"}
+              >
+                  <option value="all">All Agents</option>
+                  
+                  {/* CORRECCIÓN AQUÍ: Iteramos sobre agentNames (strings) */}
+                  {agentNames.map((name) => (
+                    <option key={name} value={name}>
+                      {name}
+                    </option>
+                  ))}
+              </select>
+              
+              {/* Iconos decorativos */}
+              <User className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" size={16} />
+              <Filter className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" size={10} />
+          </div>
+
+          {/* FILTRO DE STATUS EXISTENTE */}
+          <div className="relative">
+              <select 
+                  className="w-full sm:w-auto appearance-none pl-3 pr-8 py-2 border border-gray-300 rounded-lg text-sm bg-white focus:ring-2 focus:ring-[#0048BC] outline-none cursor-pointer"
                   onChange={(e) => handleStatusFilter(e.target.value)}
                   defaultValue={searchParams.get("status")?.toString() || "all"}
               >
@@ -111,14 +168,13 @@ export default function PropertiesToolbar({ dataToExport }: { dataToExport: any[
                   <option value="archived">Archived</option>
                   <option value="cancelled">Cancelled</option>
               </select>
-              <Filter className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" size={14} />
+              <Filter className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" size={12} />
           </div>
         </div>
 
         {/* RIGHT: Actions Buttons */}
-        <div className="flex items-center gap-2 w-full sm:w-auto justify-end">
+        <div className="flex items-center gap-2 w-full xl:w-auto justify-end mt-2 xl:mt-0">
           
-          {/* BOTÓN IMPORTAR (Nuevo - HTML) */}
           <button 
               onClick={() => setIsImportModalOpen(true)}
               className="flex items-center gap-2 px-3 py-2 bg-pink-50 border border-pink-200 text-pink-700 rounded-lg text-sm font-medium hover:bg-pink-100 transition"
@@ -128,7 +184,6 @@ export default function PropertiesToolbar({ dataToExport }: { dataToExport: any[
               <span className="hidden md:inline">Import HTML</span>
           </button>
 
-          {/* BOTÓN EXPORTAR */}
           <button 
               onClick={handleExport}
               className="flex items-center gap-2 px-3 py-2 bg-white border border-gray-300 text-gray-700 rounded-lg text-sm font-medium hover:bg-gray-50 transition"
@@ -137,7 +192,6 @@ export default function PropertiesToolbar({ dataToExport }: { dataToExport: any[
               <Download size={16} />
           </button>
           
-          {/* BOTÓN NUEVA PROPIEDAD */}
           <Link
             href="/dashboard/properties/new"
             className="flex items-center gap-2 px-4 py-2 bg-[#0048BC] text-white rounded-lg text-sm font-medium hover:bg-[#003895] transition shadow-sm"
@@ -153,7 +207,6 @@ export default function PropertiesToolbar({ dataToExport }: { dataToExport: any[
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4 animate-in fade-in duration-200">
           <div className="bg-white rounded-xl shadow-2xl w-full max-w-lg overflow-hidden flex flex-col max-h-[90vh]">
             
-            {/* Modal Header */}
             <div className="flex justify-between items-center p-4 border-b bg-gray-50 shrink-0">
               <h3 className="font-bold text-gray-800 flex items-center gap-2">
                 <FileCode size={18} className="text-pink-600" />
@@ -162,7 +215,6 @@ export default function PropertiesToolbar({ dataToExport }: { dataToExport: any[
               <button onClick={() => setIsImportModalOpen(false)} className="text-gray-400 hover:text-gray-600"><X size={20} /></button>
             </div>
             
-            {/* Modal Body */}
             <form onSubmit={handleImport} className="p-6 space-y-4 flex-1 flex flex-col min-h-0">
               <div className="text-sm text-gray-600 space-y-2">
                 <p><strong>Instructions (No Blocking):</strong></p>
@@ -190,7 +242,6 @@ export default function PropertiesToolbar({ dataToExport }: { dataToExport: any[
                 </div>
               )}
 
-              {/* Modal Footer */}
               <div className="flex justify-end gap-2 pt-2 shrink-0">
                 <button 
                   type="button" 

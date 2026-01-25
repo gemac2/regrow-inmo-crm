@@ -45,7 +45,7 @@ export async function sendEmail(formData: FormData) {
   try {
     // A. Enviar vía Resend con adjuntos
     const { error: resendError } = await resend.emails.send({
-      from: 'CRM User <onboarding@resend.dev>', // Recuerda cambiar esto en producción
+      from: 'TheWay CRM <noreply@thewaycrm.com>', // Recuerda cambiar esto en producción
       to: [to],
       subject: subject,
       html: body.replace(/\n/g, '<br>'),

@@ -1,22 +1,24 @@
 import { getProperties } from "@/app/dashboard/properties/actions";
 import PropertiesToolbar from "@/components/dashboard/PropertiesToolbar";
-import PropertiesTable from "@/components/dashboard/PropertiesTable"; // <--- IMPORTANTE: Importamos el componente inteligente
+import PropertiesTable from "@/components/dashboard/PropertiesTable";
 
-// Forzamos que la página sea dinámica para que refresque los datos siempre
 export const dynamic = "force-dynamic";
 
 export default async function PropertiesPage({
   searchParams,
 }: {
-  searchParams: Promise<{ query?: string; status?: string }>;
+  // 1. Agregamos 'agent' al tipo de datos
+  searchParams: Promise<{ query?: string; status?: string; agent?: string }>;
 }) {
-  // 1. Obtener parámetros de URL
   const params = await searchParams;
   const query = params.query || "";
   const status = params.status || "";
+  
+  // 2. Leemos el parámetro 'agent' de la URL
+  const agent = params.agent || ""; 
 
-  // 2. Obtener datos del servidor (Con protección || [] para evitar errores)
-  const properties = (await getProperties({ query, status })) || [];
+  // 3. Se lo enviamos a la función getProperties
+  const properties = (await getProperties({ query, status, agent })) || [];
 
   return (
     <div className="space-y-6">
@@ -27,11 +29,10 @@ export default async function PropertiesPage({
         <p className="text-gray-500 text-sm">Manage your real estate inventory.</p>
       </div>
 
-      {/* TOOLBAR (Search, Filter, Export, Add New) */}
+      {/* TOOLBAR */}
       <PropertiesToolbar dataToExport={properties} />
 
       {/* TABLE COMPONENT */}
-      {/* Aquí es donde ocurre la magia. Pasamos los datos al componente interactivo */}
       <PropertiesTable properties={properties} />
       
     </div>

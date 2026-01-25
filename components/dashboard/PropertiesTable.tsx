@@ -2,35 +2,26 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { Eye, Pencil, MapPin, Home, Send, X, Loader2, CheckSquare, Square, BedDouble, Maximize } from "lucide-react";
+import { Eye, Pencil, MapPin, Home, Send, X, Loader2, CheckSquare, Square, BedDouble, Maximize, User } from "lucide-react";
 import { sendEmail } from "@/app/dashboard/mailbox/actions";
 import { toast } from "sonner";
 
 // --- MAPEO DE ESTADOS Y COLORES ---
 function StatusBadge({ status }: { status: string }) {
-  // Normalizamos el status a minúsculas por seguridad
   const s = status?.toLowerCase() || "unknown";
 
   const styles: any = {
-    // FASE INICIAL
-    cold_lead: "bg-gray-100 text-gray-600 border-gray-200",      // Cold Lead
-    prospecting: "bg-blue-50 text-blue-600 border-blue-200",     // Captación
-    preparing: "bg-orange-50 text-orange-600 border-orange-200", // Preparación
-    
-    // FASE COMERCIAL
-    active: "bg-green-100 text-green-700 border-green-200",      // Activa
-    available: "bg-green-100 text-green-700 border-green-200",   // (Legacy)
-    
-    // CIERRE
-    reserved: "bg-yellow-100 text-yellow-700 border-yellow-200", // Reservada
-    sold: "bg-indigo-100 text-indigo-700 border-indigo-200",     // Vendida
-    
-    // FINALIZADOS NO EXITOSOS
-    archived: "bg-gray-50 text-gray-400 border-gray-100",        // Archivada
-    cancelled: "bg-red-50 text-red-600 border-red-100",          // Cancelada
+    cold_lead: "bg-gray-100 text-gray-600 border-gray-200",
+    prospecting: "bg-blue-50 text-blue-600 border-blue-200",
+    preparing: "bg-orange-50 text-orange-600 border-orange-200",
+    active: "bg-green-100 text-green-700 border-green-200",
+    available: "bg-green-100 text-green-700 border-green-200",
+    reserved: "bg-yellow-100 text-yellow-700 border-yellow-200",
+    sold: "bg-indigo-100 text-indigo-700 border-indigo-200",
+    archived: "bg-gray-50 text-gray-400 border-gray-100",
+    cancelled: "bg-red-50 text-red-600 border-red-100",
   };
 
-  // Función para formatear el texto (ej: "cold_lead" -> "Cold Lead")
   const formatText = (text: string) => {
     return text.replace(/_/g, " ").replace(/\b\w/g, (char) => char.toUpperCase());
   };
@@ -42,9 +33,7 @@ function StatusBadge({ status }: { status: string }) {
   );
 }
 
-// CORRECCIÓN CRÍTICA: Añadimos valor por defecto ' = []' en la destructuración
 export default function PropertiesTable({ properties = [] }: { properties?: any[] }) {
-  // Doble seguridad: Aseguramos que sea array
   const safeProperties = Array.isArray(properties) ? properties : [];
 
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
@@ -77,7 +66,6 @@ export default function PropertiesTable({ properties = [] }: { properties?: any[
 
     const selectedProps = safeProperties.filter(p => selectedIds.includes(p.id));
     
-    // HTML del correo
     const emailBody = `
       <h2 style="color: #0048BC; font-family: sans-serif;">Recommended Properties</h2>
       <p style="font-family: sans-serif; color: #555;">Hi, check out these properties I found for you:</p>
@@ -162,9 +150,11 @@ export default function PropertiesTable({ properties = [] }: { properties?: any[
                 <th className="px-6 py-3 w-[100px]">Image</th>
                 <th className="px-6 py-3">Property</th>
                 
-                {/* --- NUEVAS COLUMNAS --- */}
                 <th className="px-6 py-3 text-center">Beds</th>
                 <th className="px-6 py-3 text-center">Area</th>
+                
+                {/* --- NUEVA COLUMNA AGENTE --- */}
+                <th className="px-6 py-3">Agent</th>
                 
                 <th className="px-6 py-3">Status</th>
                 <th className="px-6 py-3 text-right">Price</th>
@@ -184,7 +174,7 @@ export default function PropertiesTable({ properties = [] }: { properties?: any[
                         </button>
                       </td>
                       
-                      {/* IMAGEN THUMBNAIL */}
+                      {/* IMAGEN */}
                       <td className="px-6 py-3">
                         <div className="w-16 h-12 rounded-md overflow-hidden bg-gray-100 relative border border-gray-200 shrink-0">
                           {p.images && p.images[0] ? (
@@ -195,9 +185,9 @@ export default function PropertiesTable({ properties = [] }: { properties?: any[
                         </div>
                       </td>
                       
-                      {/* TÍTULO Y REF */}
+                      {/* TÍTULO */}
                       <td className="px-6 py-3">
-                        <div className="flex flex-col max-w-[250px]">
+                        <div className="flex flex-col max-w-[200px]">
                           <span className="font-semibold text-gray-900 truncate">{p.title}</span>
                           <div className="flex items-center gap-2 text-xs text-gray-500 mt-0.5">
                               <span className="font-mono bg-gray-100 px-1 rounded text-[10px]">{p.reference}</span>
@@ -208,7 +198,7 @@ export default function PropertiesTable({ properties = [] }: { properties?: any[
                         </div>
                       </td>
 
-                      {/* --- COLUMNA BEDS --- */}
+                      {/* BEDS */}
                       <td className="px-6 py-3 text-center">
                         <div className="flex items-center justify-center gap-1 text-gray-600">
                             <span className="font-medium">{p.bedrooms || "-"}</span>
@@ -216,7 +206,7 @@ export default function PropertiesTable({ properties = [] }: { properties?: any[
                         </div>
                       </td>
 
-                      {/* --- COLUMNA AREA --- */}
+                      {/* AREA */}
                       <td className="px-6 py-3 text-center">
                         <div className="flex items-center justify-center gap-1 text-gray-600">
                             <span className="font-medium">{p.usable_area ? `${p.usable_area} m²` : "-"}</span>
@@ -224,10 +214,30 @@ export default function PropertiesTable({ properties = [] }: { properties?: any[
                         </div>
                       </td>
 
+                      {/* --- COLUMNA AGENTE (CORREGIDO PARA agent_name) --- */}
+                      <td className="px-6 py-3">
+                        {p.agent_name ? (
+                          <div className="flex items-center gap-2" title={p.agent_name}>
+                            <div className="w-6 h-6 rounded-full bg-blue-100 text-blue-700 flex items-center justify-center text-[10px] font-bold border border-blue-200 uppercase shrink-0">
+                              {/* Inicial del nombre */}
+                              {p.agent_name.charAt(0)}
+                            </div>
+                            <span className="text-sm text-gray-700 truncate max-w-[120px]">
+                                {p.agent_name}
+                            </span>
+                          </div>
+                        ) : (
+                          <span className="text-xs text-gray-400 italic">Unassigned</span>
+                        )}
+                      </td>
+
+                      {/* STATUS */}
                       <td className="px-6 py-3"><StatusBadge status={p.status} /></td>
+                      
+                      {/* PRICE */}
                       <td className="px-6 py-3 text-right font-medium text-gray-900">{p.price?.toLocaleString()} €</td>
                       
-                      {/* ACCIONES */}
+                      {/* ACTIONS */}
                       <td className="px-6 py-3">
                         <div className="flex justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
                           <Link href={`/dashboard/properties/${p.id}`} className="p-1.5 hover:bg-blue-100 text-blue-600 rounded-md" title="View"><Eye size={16} /></Link>
@@ -239,7 +249,7 @@ export default function PropertiesTable({ properties = [] }: { properties?: any[
                 })
               ) : (
                 <tr>
-                  <td colSpan={9} className="px-6 py-16 text-center text-gray-500">No properties found.</td>
+                  <td colSpan={10} className="px-6 py-16 text-center text-gray-500">No properties found.</td>
                 </tr>
               )}
             </tbody>
@@ -247,7 +257,7 @@ export default function PropertiesTable({ properties = [] }: { properties?: any[
         </div>
       </div>
 
-      {/* --- MODAL DE ENVÍO --- */}
+      {/* MODAL DE ENVIO (Misma lógica, no cambia) */}
       {isSendModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4 animate-in fade-in duration-200">
           <div className="bg-white rounded-xl shadow-2xl w-full max-w-md overflow-hidden">

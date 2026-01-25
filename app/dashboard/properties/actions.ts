@@ -3,39 +3,28 @@
 import { createSupabaseServer } from "@/lib/supabase";
 import { revalidatePath } from "next/cache";
 
-// 1. OBTENER LISTA (CON FILTROS Y BÚSQUEDA)
-export async function getProperties(searchParams?: { query?: string; status?: string }) {
+// 1. OBTENER LISTA (CON FILTROS DE BÚSQUEDA, ESTADO Y AGENTE)
+export async function getProperties(searchParams?: { 
+  query?: string; 
+  status?: string; 
+  agent?: string; 
+}) {
   const supabase = await createSupabaseServer();
-  
-  // 1. Log para ver si llegan los parámetros
-  console.log("🔍 Buscando propiedades con params:", searchParams);
 
   let queryBuilder = supabase
     .from("properties")
     .select("*")
     .order("created_at", { ascending: false });
 
-  // Filtro de Texto
-  if (searchParams?.query) {
-    const q = searchParams.query;
-    queryBuilder = queryBuilder.or(`title.ilike.%${q}%,reference.ilike.%${q}%,city.ilike.%${q}%`);
-  }
+  // ... (otros filtros) ...
 
-  // Filtro de Estado
-  if (searchParams?.status && searchParams.status !== "all") {
-    queryBuilder = queryBuilder.eq("status", searchParams.status);
+  // CORRECCIÓN AQUÍ: Usamos 'agent_name'
+  if (searchParams?.agent && searchParams.agent !== "all") {
+    queryBuilder = queryBuilder.eq("agent_name", searchParams.agent);
   }
 
   const { data, error } = await queryBuilder;
-
-  if (error) {
-    console.error("❌ Error Supabase:", error.message);
-    return [];
-  }
-
-  // 2. Log para ver cuántos registros devolvió la base de datos
-  console.log(`✅ Resultados encontrados: ${data?.length || 0}`);
-
+  // ...
   return data || [];
 }
 
