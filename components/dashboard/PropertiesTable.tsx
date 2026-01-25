@@ -239,7 +239,7 @@ export default function PropertiesTable({ properties = [] }: { properties?: any[
                       
                       {/* ACTIONS */}
                       <td className="px-6 py-3">
-                        <div className="flex justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <div className="flex justify-end gap-2 opacity-100 transition-opacity">
                           <Link href={`/dashboard/properties/${p.id}`} className="p-1.5 hover:bg-blue-100 text-blue-600 rounded-md" title="View"><Eye size={16} /></Link>
                           <Link href={`/dashboard/properties/${p.id}/edit`} className="p-1.5 hover:bg-green-100 text-green-600 rounded-md" title="Edit"><Pencil size={16} /></Link>
                         </div>

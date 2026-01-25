@@ -15,8 +15,16 @@ export async function getProperties(searchParams?: {
     .from("properties")
     .select("*")
     .order("created_at", { ascending: false });
+ // Filtro de Texto
+  if (searchParams?.query) {
+    const q = searchParams.query;
+    queryBuilder = queryBuilder.or(`title.ilike.%${q}%,reference.ilike.%${q}%,city.ilike.%${q}%`);
+  }
 
-  // ... (otros filtros) ...
+  // Filtro de Estado
+  if (searchParams?.status && searchParams.status !== "all") {
+    queryBuilder = queryBuilder.eq("status", searchParams.status);
+  }
 
   // CORRECCIÓN AQUÍ: Usamos 'agent_name'
   if (searchParams?.agent && searchParams.agent !== "all") {
