@@ -1,6 +1,6 @@
 "use server";
 
-import { createSupabaseServer } from "@/lib/supabase";
+import { createSupabaseServer } from "@/lib/supabase-server";
 
 // 1. LEER HISTORIAL (Para el Sidebar)
 export async function getRecentlyViewed() {

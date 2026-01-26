@@ -1,6 +1,6 @@
 "use server";
 
-import { createSupabaseServer } from "@/lib/supabase";
+import { createSupabaseServer } from "@/lib/supabase-server";
 import { revalidatePath } from "next/cache";
 
 // 1. OBTENER LISTA (CON FILTROS DE BÚSQUEDA, ESTADO Y AGENTE)

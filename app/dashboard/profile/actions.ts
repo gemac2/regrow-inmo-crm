@@ -1,6 +1,6 @@
 "use server";
 
-import { createSupabaseServer } from "@/lib/supabase";
+import { createSupabaseServer } from "@/lib/supabase-server";
 import { revalidatePath } from "next/cache";
 
 export async function updateProfile(formData: FormData) {

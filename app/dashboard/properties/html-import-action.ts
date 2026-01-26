@@ -1,7 +1,7 @@
 "use server";
 
 import * as cheerio from "cheerio";
-import { createSupabaseServer } from "@/lib/supabase";
+import { createSupabaseServer } from "@/lib/supabase-server";
 import { revalidatePath } from "next/cache";
 
 export async function importFromHtml(htmlContent: string) {

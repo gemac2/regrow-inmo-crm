@@ -1,6 +1,6 @@
 "use server";
 
-import { createSupabaseServer } from "@/lib/supabase"; // USAR ESTE, NO EL BROWSER
+import { createSupabaseServer } from "@/lib/supabase-server"; // USAR ESTE, NO EL BROWSER
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
