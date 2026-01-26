@@ -1,26 +1,22 @@
-import { getEvents, getSelectOptions } from "@/app/dashboard/calendar/actions";
-import CalendarView from "@/components/calendar/CalendarView";
+import { getEvents, getPropertiesList, getContactsList } from "./actions";
+import CalendarClient from "@/components/calendar/CalendarView"; // <--- Importamos el componente visual que creaste en el Paso 1
 
-export const dynamic = "force-dynamic"; // Para asegurar que no cachee datos viejos
-
+// Esta página es un SERVER COMPONENT (sin 'use client')
 export default async function CalendarPage() {
-  const events = await getEvents();
-  const { properties, contacts } = await getSelectOptions();
+  // 1. Buscamos todos los datos en paralelo para que sea rápido
+  const [events, properties, contacts] = await Promise.all([
+    getEvents(),
+    getPropertiesList(),
+    getContactsList()
+  ]);
 
+  // 2. Se los pasamos al cliente
   return (
-    <div className="h-full flex flex-col space-y-4">
-      <div className="flex justify-between items-center">
-        <div>
-          <h1 className="text-3xl font-bold text-gray-900">Calendar</h1>
-          <p className="text-gray-500 mt-1">Manage viewings and appointments.</p>
-        </div>
-      </div>
-
-      {/* Renderizamos el cliente pasándole los datos iniciales */}
-      <CalendarView 
+    <div className="h-full w-full">
+      <CalendarClient 
         events={events || []} 
-        properties={properties || []}
-        contacts={contacts || []}
+        properties={properties || []} 
+        contacts={contacts || []} 
       />
     </div>
   );

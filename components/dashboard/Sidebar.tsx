@@ -5,7 +5,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { 
   Home, Building, Users, Calendar, CheckSquare, Settings, HelpCircle, LogOut, Clock,
-  Mail // <--- Importamos el icono de Mail
+  Mail, Share2 // <--- Importamos Share2 para Resales
 } from "lucide-react";
 import { logout } from "@/app/auth/logout/action"; 
 import { getRecentlyViewed } from "@/app/dashboard/recent/actions";
@@ -14,8 +14,9 @@ import { getRecentlyViewed } from "@/app/dashboard/recent/actions";
 const mainMenu = [
   { name: "Dashboard", href: "/dashboard", icon: Home, exact: true },
   { name: "Properties", href: "/dashboard/properties", icon: Building },
+  { name: "Resales", href: "/dashboard/resales", icon: Share2 }, // <--- NUEVA OPCIÓN: RESALES
   { name: "Contacts", href: "/dashboard/contacts", icon: Users },
-  { name: "Mailbox", href: "/dashboard/mailbox", icon: Mail }, // <--- NUEVA OPCIÓN AGREGADA
+  { name: "Mailbox", href: "/dashboard/mailbox", icon: Mail },
   { name: "Calendar", href: "/dashboard/calendar", icon: Calendar },
   { name: "Tasks", href: "/dashboard/tasks", icon: CheckSquare },
 ];
