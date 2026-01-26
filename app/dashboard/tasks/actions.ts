@@ -51,3 +51,44 @@ export async function getSelectOptions() {
   const { data: contacts } = await supabase.from("contacts").select("id, full_name");
   return { properties, contacts };
 }
+
+export async function updateTask(taskId: string, formData: FormData) {
+  const supabase = await createSupabaseServer();
+  const { data: { user } } = await supabase.auth.getUser();
+
+  if (!user) return { success: false, error: "Unauthorized" };
+
+  const title = formData.get("title") as string;
+  const priority = formData.get("priority") as string;
+  const due_date = formData.get("due_date") as string;
+  const property_id = formData.get("property_id") as string;
+  
+  // Objeto con los cambios
+  const updates: any = {
+    title,
+    priority,
+    due_date: due_date ? new Date(due_date).toISOString() : null,
+    updated_at: new Date().toISOString()
+  };
+
+  // Solo actualizamos la propiedad si el usuario seleccionó una diferente (o "none")
+  if (property_id && property_id !== "none") {
+    updates.property_id = property_id;
+  } else if (property_id === "none") {
+    updates.property_id = null;
+  }
+
+  const { error } = await supabase
+    .from('tasks')
+    .update(updates)
+    .eq('id', taskId)
+    .eq('agent_id', user.id); // Seguridad: solo edita si es tuya
+
+  if (error) {
+    console.error("Error updating task:", error);
+    return { success: false, error: error.message };
+  }
+
+  revalidatePath("/dashboard/tasks");
+  return { success: true };
+}

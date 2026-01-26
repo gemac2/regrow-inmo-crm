@@ -3,17 +3,18 @@
 import { useState } from "react";
 import { 
   Plus, Calendar, AlertCircle, CheckCircle, 
-  MoreHorizontal, ArrowRight, ArrowLeft, Trash2, MapPin, User, X
-} from "lucide-react";
-import { format, isPast, isToday } from "date-fns";
-import { createTask, updateTaskStatus, deleteTask } from "@/app/dashboard/tasks/actions";
+  MoreHorizontal, ArrowRight, ArrowLeft, Trash2, MapPin, User, X, Pencil 
+} from "lucide-react"; // <--- Agregamos Pencil
+import { format, isPast, isToday, parseISO } from "date-fns";
+import { createTask, updateTaskStatus, deleteTask, updateTask } from "@/app/dashboard/tasks/actions"; // <--- Asegúrate de importar updateTask
 
 export default function TasksBoard({ tasks, properties, contacts }: any) {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [loading, setLoading] = useState(false);
-  
-  // Estado para nueva tarea
-  const [newTask, setNewTask] = useState({
+  const [editingTask, setEditingTask] = useState<any>(null); // <--- Nuevo estado para saber qué editamos
+
+  // Estado del formulario (unificado para crear y editar)
+  const [formData, setFormData] = useState({
     title: "",
     description: "",
     priority: "medium",
@@ -23,26 +24,72 @@ export default function TasksBoard({ tasks, properties, contacts }: any) {
     contact_id: ""
   });
 
-  // Agrupar tareas por columnas
+  // Agrupar tareas
   const columns = {
     todo: tasks.filter((t: any) => t.status === 'todo'),
     in_progress: tasks.filter((t: any) => t.status === 'in_progress'),
     done: tasks.filter((t: any) => t.status === 'done'),
   };
 
+  // --- ABRIR MODAL PARA CREAR ---
+  const openCreateModal = () => {
+    setEditingTask(null); // Modo Creación
+    setFormData({ 
+        title: "", description: "", priority: "medium", status: "todo", 
+        due_date: "", property_id: "", contact_id: "" 
+    });
+    setIsModalOpen(true);
+  };
+
+  // --- ABRIR MODAL PARA EDITAR ---
+  const openEditModal = (task: any) => {
+    setEditingTask(task); // Modo Edición
+    // Rellenamos el formulario con los datos de la tarea
+    setFormData({
+        title: task.title,
+        description: task.description || "",
+        priority: task.priority || "medium",
+        status: task.status,
+        // Formatear fecha para el input datetime-local (yyyy-MM-ddThh:mm)
+        due_date: task.due_date ? format(parseISO(task.due_date), "yyyy-MM-dd'T'HH:mm") : "",
+        property_id: task.property_id || "",
+        contact_id: task.contact_id || ""
+    });
+    setIsModalOpen(true);
+  };
+
+  // --- GUARDAR (Crear o Actualizar) ---
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
-    const payload = {
-        ...newTask,
-        due_date: newTask.due_date ? new Date(newTask.due_date).toISOString() : null,
-        property_id: (!newTask.property_id || newTask.property_id === "none") ? null : newTask.property_id,
-        contact_id: (!newTask.contact_id || newTask.contact_id === "none") ? null : newTask.contact_id
+
+    const payload: any = {
+        title: formData.title,
+        description: formData.description,
+        priority: formData.priority,
+        status: formData.status, // Importante enviar el status
+        due_date: formData.due_date ? new Date(formData.due_date).toISOString() : null,
+        property_id: (!formData.property_id || formData.property_id === "none") ? null : formData.property_id,
+        contact_id: (!formData.contact_id || formData.contact_id === "none") ? null : formData.contact_id
     };
-    await createTask(payload);
+
+    // Usamos FormData para enviarlo a la Server Action (según tu actions.ts anterior)
+    const dataToSend = new FormData();
+    Object.keys(payload).forEach(key => {
+        if (payload[key] !== null) dataToSend.append(key, payload[key]);
+    });
+
+    if (editingTask) {
+        // ACTUALIZAR
+        await updateTask(editingTask.id, dataToSend);
+    } else {
+        // CREAR
+        await createTask(payload); // Ojo: verifica si tu createTask espera objeto o FormData. Aquí asumo objeto según tu código anterior.
+    }
+
     setLoading(false);
     setIsModalOpen(false);
-    setNewTask({ title: "", description: "", priority: "medium", status: "todo", due_date: "", property_id: "", contact_id: "" });
+    setEditingTask(null);
   };
 
   const handleDelete = async (id: string) => {
@@ -51,7 +98,6 @@ export default function TasksBoard({ tasks, properties, contacts }: any) {
     }
   };
 
-  // Helper de colores para prioridad
   const getPriorityColor = (p: string) => {
     switch(p) {
         case 'high': return 'bg-red-100 text-red-700 border-red-200';
@@ -63,25 +109,26 @@ export default function TasksBoard({ tasks, properties, contacts }: any) {
 
   // Componente de Tarjeta
   const TaskCard = ({ task }: { task: any }) => (
-    <div className="bg-white p-3 rounded-lg border border-gray-200 shadow-sm hover:shadow-md transition-shadow group animate-in fade-in zoom-in duration-200">
+    <div className="bg-white p-3 rounded-lg border border-gray-200 shadow-sm hover:shadow-md transition-shadow group animate-in fade-in zoom-in duration-200 relative">
         
         {/* Header Tarjeta */}
         <div className="flex justify-between items-start mb-2">
             <span className={`text-[10px] uppercase font-bold px-2 py-0.5 rounded-full border ${getPriorityColor(task.priority)}`}>
                 {task.priority}
             </span>
+            
+            {/* ACCIONES */}
             <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                 {/* Botones de Mover Rápidos */}
-                {task.status !== 'todo' && (
-                    <button onClick={() => updateTaskStatus(task.id, task.status === 'done' ? 'in_progress' : 'todo')} className="p-1 hover:bg-gray-100 rounded text-gray-500" title="Move Back">
-                        <ArrowLeft size={14} />
-                    </button>
-                )}
-                {task.status !== 'done' && (
-                    <button onClick={() => updateTaskStatus(task.id, task.status === 'todo' ? 'in_progress' : 'done')} className="p-1 hover:bg-gray-100 rounded text-gray-500" title="Move Forward">
-                        <ArrowRight size={14} />
-                    </button>
-                )}
+                {/* BOTÓN EDITAR */}
+                <button 
+                    onClick={() => openEditModal(task)} 
+                    className="p-1 hover:bg-blue-50 text-gray-400 hover:text-blue-600 rounded" 
+                    title="Edit"
+                >
+                    <Pencil size={14} />
+                </button>
+
+                {/* BOTÓN BORRAR */}
                 <button onClick={() => handleDelete(task.id)} className="p-1 hover:bg-red-50 text-gray-400 hover:text-red-500 rounded ml-1">
                     <Trash2 size={14} />
                 </button>
@@ -113,6 +160,20 @@ export default function TasksBoard({ tasks, properties, contacts }: any) {
                 </div>
             )}
         </div>
+
+        {/* FLECHAS DE MOVER (Abajo para fácil acceso) */}
+        <div className="mt-2 flex justify-end border-t border-gray-50 pt-2 opacity-0 group-hover:opacity-100 transition-opacity">
+             {task.status !== 'todo' && (
+                <button onClick={() => updateTaskStatus(task.id, task.status === 'done' ? 'in_progress' : 'todo')} className="p-1 hover:bg-gray-100 rounded text-gray-400 hover:text-gray-700" title="Move Back">
+                    <ArrowLeft size={14} />
+                </button>
+            )}
+            {task.status !== 'done' && (
+                <button onClick={() => updateTaskStatus(task.id, task.status === 'todo' ? 'in_progress' : 'done')} className="p-1 hover:bg-gray-100 rounded text-gray-400 hover:text-gray-700" title="Move Forward">
+                    <ArrowRight size={14} />
+                </button>
+            )}
+        </div>
     </div>
   );
 
@@ -125,7 +186,7 @@ export default function TasksBoard({ tasks, properties, contacts }: any) {
                 <p className="text-gray-500 text-sm">Manage your daily to-dos.</p>
             </div>
             <button 
-                onClick={() => setIsModalOpen(true)}
+                onClick={openCreateModal} // Usamos la nueva función
                 className="flex items-center bg-[#0048BC] text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-[#003895] transition"
             >
                 <Plus className="mr-2 h-4 w-4" /> New Task
@@ -135,7 +196,6 @@ export default function TasksBoard({ tasks, properties, contacts }: any) {
         {/* KANBAN BOARD */}
         <div className="flex-1 overflow-x-auto pb-4">
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6 min-w-[800px] h-full">
-                
                 {/* COLUMN 1: TO DO */}
                 <div className="flex flex-col h-full bg-gray-50/50 rounded-xl border border-gray-200/60">
                     <div className="p-3 border-b border-gray-200 flex justify-between items-center bg-gray-50 rounded-t-xl">
@@ -155,7 +215,6 @@ export default function TasksBoard({ tasks, properties, contacts }: any) {
                     <div className="p-3 border-b border-blue-100 flex justify-between items-center bg-blue-50/50 rounded-t-xl">
                          <div className="flex items-center gap-2">
                             <div className="w-3 h-3 rounded-full border-2 border-blue-500 border-t-transparent animate-spin-slow"></div> 
-                            {/* Icono animado simple o estatico */}
                             <h3 className="font-bold text-blue-900 text-sm">In Progress</h3>
                         </div>
                         <span className="bg-blue-100 text-blue-700 px-2 py-0.5 rounded text-xs font-bold">{columns.in_progress.length}</span>
@@ -178,31 +237,37 @@ export default function TasksBoard({ tasks, properties, contacts }: any) {
                          {columns.done.map((task: any) => <TaskCard key={task.id} task={task} />)}
                     </div>
                 </div>
-
             </div>
         </div>
 
-        {/* MODAL NUEVA TAREA */}
+        {/* MODAL (CREAR / EDITAR) */}
         {isModalOpen && (
             <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
                 <div className="bg-white rounded-xl shadow-2xl w-full max-w-md animate-in fade-in zoom-in duration-200">
                     <div className="flex justify-between items-center p-4 border-b">
-                        <h3 className="font-bold text-lg">Create Task</h3>
+                        <h3 className="font-bold text-lg">{editingTask ? "Edit Task" : "Create Task"}</h3>
                         <button onClick={() => setIsModalOpen(false)} className="text-gray-400 hover:text-gray-600"><X size={20} /></button>
                     </div>
                     <form onSubmit={handleSave} className="p-4 space-y-4">
                         <div>
                             <label className="text-sm font-medium block mb-1">Title</label>
-                            <input required className="w-full border rounded-lg p-2 text-sm" placeholder="e.g. Call Notary" value={newTask.title} onChange={e => setNewTask({...newTask, title: e.target.value})} />
+                            <input required className="w-full border rounded-lg p-2 text-sm" placeholder="e.g. Call Notary" value={formData.title} onChange={e => setFormData({...formData, title: e.target.value})} />
                         </div>
+                        
+                        {/* Nuevo campo Descripción (opcional) */}
+                        <div>
+                            <label className="text-sm font-medium block mb-1">Description</label>
+                            <textarea className="w-full border rounded-lg p-2 text-sm h-20" placeholder="Details..." value={formData.description} onChange={e => setFormData({...formData, description: e.target.value})} />
+                        </div>
+
                         <div>
                             <label className="text-sm font-medium block mb-1">Due Date</label>
-                            <input type="datetime-local" className="w-full border rounded-lg p-2 text-sm" value={newTask.due_date} onChange={e => setNewTask({...newTask, due_date: e.target.value})} />
+                            <input type="datetime-local" className="w-full border rounded-lg p-2 text-sm" value={formData.due_date} onChange={e => setFormData({...formData, due_date: e.target.value})} />
                         </div>
                          <div className="grid grid-cols-2 gap-4">
                             <div>
                                 <label className="text-sm font-medium block mb-1">Priority</label>
-                                <select className="w-full border rounded-lg p-2 text-sm bg-white" value={newTask.priority} onChange={e => setNewTask({...newTask, priority: e.target.value})}>
+                                <select className="w-full border rounded-lg p-2 text-sm bg-white" value={formData.priority} onChange={e => setFormData({...formData, priority: e.target.value})}>
                                     <option value="low">Low</option>
                                     <option value="medium">Medium</option>
                                     <option value="high">High</option>
@@ -210,7 +275,7 @@ export default function TasksBoard({ tasks, properties, contacts }: any) {
                             </div>
                             <div>
                                 <label className="text-sm font-medium block mb-1">Status</label>
-                                <select className="w-full border rounded-lg p-2 text-sm bg-white" value={newTask.status} onChange={e => setNewTask({...newTask, status: e.target.value})}>
+                                <select className="w-full border rounded-lg p-2 text-sm bg-white" value={formData.status} onChange={e => setFormData({...formData, status: e.target.value})}>
                                     <option value="todo">To Do</option>
                                     <option value="in_progress">In Progress</option>
                                     <option value="done">Done</option>
@@ -220,22 +285,24 @@ export default function TasksBoard({ tasks, properties, contacts }: any) {
                          {/* Selectores de Relación */}
                          <div>
                             <label className="text-sm font-medium block mb-1">Related Property</label>
-                            <select className="w-full border rounded-lg p-2 text-sm bg-white" onChange={e => setNewTask({...newTask, property_id: e.target.value})}>
-                                <option value="none">-- None --</option>
+                            <select className="w-full border rounded-lg p-2 text-sm bg-white" value={formData.property_id} onChange={e => setFormData({...formData, property_id: e.target.value})}>
+                                <option value="">-- None --</option>
                                 {properties?.map((p: any) => <option key={p.id} value={p.id}>{p.reference} - {p.title}</option>)}
                             </select>
                         </div>
                         <div>
                             <label className="text-sm font-medium block mb-1">Related Contact</label>
-                            <select className="w-full border rounded-lg p-2 text-sm bg-white" onChange={e => setNewTask({...newTask, contact_id: e.target.value})}>
-                                <option value="none">-- None --</option>
+                            <select className="w-full border rounded-lg p-2 text-sm bg-white" value={formData.contact_id} onChange={e => setFormData({...formData, contact_id: e.target.value})}>
+                                <option value="">-- None --</option>
                                 {contacts?.map((c: any) => <option key={c.id} value={c.id}>{c.full_name}</option>)}
                             </select>
                         </div>
 
                         <div className="pt-2 flex justify-end gap-2">
                             <button type="button" onClick={() => setIsModalOpen(false)} className="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded-lg text-sm">Cancel</button>
-                            <button type="submit" disabled={loading} className="px-4 py-2 bg-[#0048BC] text-white rounded-lg text-sm hover:bg-[#003895]">{loading ? 'Creating...' : 'Create Task'}</button>
+                            <button type="submit" disabled={loading} className="px-4 py-2 bg-[#0048BC] text-white rounded-lg text-sm hover:bg-[#003895]">
+                                {loading ? 'Saving...' : (editingTask ? 'Update Task' : 'Create Task')}
+                            </button>
                         </div>
                     </form>
                 </div>
